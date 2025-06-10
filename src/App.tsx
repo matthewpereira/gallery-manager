@@ -102,8 +102,10 @@ function Gallery() {
 }
 
 function App() {
+  const basename = import.meta.env.PROD ? '/gallery-manager' : '';
+  
   return (
-    <Router>
+    <Router basename={basename}>
       <Routes>
         <Route path="/" element={<Gallery />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
