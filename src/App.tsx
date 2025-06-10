@@ -2,23 +2,49 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthButton } from './components/AuthButton';
 import { ImageGrid } from './components/ImageGrid';
+import { AlbumGrid } from './components/AlbumGrid';
 import { AuthCallback } from './components/AuthCallback';
 import { authService } from './services/auth';
 import { imgurService } from './services/imgur';
-import type { ImgurImage } from './types/imgur';
+import type { ImgurImage, ImgurAlbum } from './types/imgur';
 
 function Gallery() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [images, setImages] = useState<ImgurImage[]>([]);
+  const [albums, setAlbums] = useState<ImgurAlbum[]>([]);
+  const [currentView, setCurrentView] = useState<'albums' | 'images'>('albums');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    setIsAuthenticated(authService.isAuthenticated());
+    // Check if we're receiving an auth callback at the root path
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    
+    if (code) {
+      handleAuthCallback(code);
+    } else {
+      setIsAuthenticated(authService.isAuthenticated());
+    }
   }, []);
+
+  const handleAuthCallback = async (code: string) => {
+    setLoading(true);
+    try {
+      await authService.exchangeCodeForToken(code);
+      setIsAuthenticated(true);
+      // Clear the URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
+      fetchAlbums();
       fetchImages();
     }
   }, [isAuthenticated]);
@@ -36,6 +62,19 @@ function Gallery() {
     }
   };
 
+  const fetchAlbums = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const fetchedAlbums = await imgurService.getAccountAlbums();
+      setAlbums(fetchedAlbums);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch albums');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleImageDelete = async (imageId: string) => {
     if (!confirm('Are you sure you want to delete this image?')) return;
     
@@ -47,6 +86,17 @@ function Gallery() {
     }
   };
 
+  const handleAlbumDelete = async (albumId: string) => {
+    if (!confirm('Are you sure you want to delete this album?')) return;
+    
+    try {
+      await imgurService.deleteAlbum(albumId);
+      setAlbums(albums.filter(album => album.id !== albumId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete album');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b">
@@ -55,10 +105,36 @@ function Gallery() {
             <h1 className="text-2xl font-bold text-gray-900">
               Imgur Gallery Manager
             </h1>
-            <AuthButton 
-              isAuthenticated={isAuthenticated} 
-              onAuthChange={setIsAuthenticated}
-            />
+            <div className="flex items-center gap-4">
+              {isAuthenticated && (
+                <div className="flex bg-gray-100 rounded-lg">
+                  <button
+                    onClick={() => setCurrentView('albums')}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      currentView === 'albums' 
+                        ? 'bg-blue-500 text-white' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Albums ({albums.length})
+                  </button>
+                  <button
+                    onClick={() => setCurrentView('images')}
+                    className={`px-4 py-2 rounded-lg transition-colors ${
+                      currentView === 'images' 
+                        ? 'bg-blue-500 text-white' 
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Images ({images.length})
+                  </button>
+                </div>
+              )}
+              <AuthButton 
+                isAuthenticated={isAuthenticated} 
+                onAuthChange={setIsAuthenticated}
+              />
+            </div>
           </div>
         </div>
       </header>
@@ -86,13 +162,22 @@ function Gallery() {
             {loading ? (
               <div className="text-center py-12">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p>Loading your images...</p>
+                <p>Loading your {currentView}...</p>
               </div>
             ) : (
-              <ImageGrid 
-                images={images} 
-                onImageDelete={handleImageDelete}
-              />
+              <>
+                {currentView === 'albums' ? (
+                  <AlbumGrid 
+                    albums={albums} 
+                    onAlbumDelete={handleAlbumDelete}
+                  />
+                ) : (
+                  <ImageGrid 
+                    images={images} 
+                    onImageDelete={handleImageDelete}
+                  />
+                )}
+              </>
             )}
           </>
         )}
