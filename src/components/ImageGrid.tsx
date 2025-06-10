@@ -1,4 +1,5 @@
 import React from 'react';
+import { Calendar, Eye, Monitor, FileText, Trash2, Image as ImageIcon, Play } from 'lucide-react';
 import type { ImgurImage } from '../types/imgur';
 
 interface ImageGridProps {
@@ -26,16 +27,20 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
 
   if (images.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500">
-        No images found. Upload some images to Imgur to see them here!
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <ImageIcon className="w-16 h-16 mb-4 opacity-50" />
+        <h3 className="text-lg font-medium mb-2">No images found</h3>
+        <p className="text-sm text-center max-w-sm">
+          Upload some images to Imgur to see them here! Your individual images will appear in this gallery.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div className="grid-gallery animate-fade-in">
       {images.map((image) => (
-        <div key={image.id} className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div key={image.id} className="bg-card border border-border rounded-lg overflow-hidden card-hover animate-slide-up">
           <div 
             className="relative cursor-pointer group"
             onClick={() => onImageClick?.(image)}
@@ -43,26 +48,44 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
             <img
               src={image.link}
               alt={image.title || 'Imgur image'}
-              className="w-full h-48 object-cover group-hover:opacity-90 transition-opacity"
+              className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
             />
+            
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            
             {image.animated && (
-              <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-xs">
-                GIF
+              <div className="absolute top-3 right-3 glassmorphism rounded-md px-2 py-1">
+                <div className="flex items-center gap-1 text-white text-xs font-medium">
+                  <Play className="w-3 h-3" />
+                  GIF
+                </div>
               </div>
             )}
           </div>
           
-          <div className="p-3">
-            <h3 className="font-medium text-sm mb-1 truncate">
+          <div className="p-4">
+            <h3 className="font-medium text-sm mb-2 text-card-foreground line-clamp-2">
               {image.title || 'Untitled'}
             </h3>
             
-            <div className="text-xs text-gray-500 space-y-1">
-              <div>{formatDate(image.datetime)}</div>
-              <div>{image.width} × {image.height}</div>
-              <div>{formatFileSize(image.size)}</div>
-              <div>{image.views.toLocaleString()} views</div>
+            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-3">
+              <div className="flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                {formatDate(image.datetime)}
+              </div>
+              <div className="flex items-center gap-1">
+                <Monitor className="w-3 h-3" />
+                {image.width} × {image.height}
+              </div>
+              <div className="flex items-center gap-1">
+                <FileText className="w-3 h-3" />
+                {formatFileSize(image.size)}
+              </div>
+              <div className="flex items-center gap-1">
+                <Eye className="w-3 h-3" />
+                {image.views.toLocaleString()}
+              </div>
             </div>
 
             {onImageDelete && (
@@ -71,8 +94,9 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
                   e.stopPropagation();
                   onImageDelete(image.id);
                 }}
-                className="mt-2 w-full bg-red-500 hover:bg-red-600 text-white text-xs py-1 px-2 rounded"
+                className="w-full bg-destructive hover:bg-destructive/90 text-destructive-foreground text-sm py-2 px-3 rounded-md transition-colors flex items-center justify-center gap-2"
               >
+                <Trash2 className="w-4 h-4" />
                 Delete
               </button>
             )}

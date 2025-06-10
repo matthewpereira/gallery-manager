@@ -1,4 +1,5 @@
 import React from 'react';
+import { Calendar, Eye, Lock, Users, Image as ImageIcon, Trash2 } from 'lucide-react';
 import type { ImgurAlbum } from '../types/imgur';
 
 interface AlbumGridProps {
@@ -18,16 +19,20 @@ export const AlbumGrid: React.FC<AlbumGridProps> = ({
 
   if (albums.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500">
-        No albums found. Create some albums on Imgur to see them here!
+      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+        <ImageIcon className="w-16 h-16 mb-4 opacity-50" />
+        <h3 className="text-lg font-medium mb-2">No albums found</h3>
+        <p className="text-sm text-center max-w-sm">
+          Create some albums on Imgur to see them here! Albums help organize your images into collections.
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div className="grid-gallery animate-fade-in">
       {albums.map((album) => (
-        <div key={album.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+        <div key={album.id} className="bg-card border border-border rounded-lg overflow-hidden card-hover animate-slide-up">
           <div 
             className="relative cursor-pointer group"
             onClick={() => onAlbumClick?.(album)}
@@ -36,43 +41,53 @@ export const AlbumGrid: React.FC<AlbumGridProps> = ({
               <img
                 src={`https://i.imgur.com/${album.cover}m.jpg`}
                 alt={album.title || 'Album cover'}
-                className="w-full h-48 object-cover group-hover:opacity-90 transition-opacity"
+                className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"
               />
             ) : (
-              <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-                <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
+              <div className="w-full h-48 bg-muted flex items-center justify-center">
+                <ImageIcon className="w-12 h-12 text-muted-foreground" />
               </div>
             )}
             
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
-              <div className="text-white text-sm font-medium">
-                {album.images_count} {album.images_count === 1 ? 'image' : 'images'}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            
+            <div className="absolute bottom-3 left-3 right-3">
+              <div className="glassmorphism rounded-md px-2 py-1">
+                <div className="flex items-center gap-1 text-white text-sm font-medium">
+                  <ImageIcon className="w-3 h-3" />
+                  {album.images_count} {album.images_count === 1 ? 'image' : 'images'}
+                </div>
               </div>
             </div>
           </div>
           
           <div className="p-4">
-            <h3 className="font-semibold text-lg mb-2 line-clamp-2">
+            <h3 className="font-semibold text-lg mb-2 text-card-foreground line-clamp-2">
               {album.title || 'Untitled Album'}
             </h3>
             
             {album.description && (
-              <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+              <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
                 {album.description}
               </p>
             )}
             
-            <div className="text-xs text-gray-500 space-y-1 mb-3">
-              <div>Created: {formatDate(album.datetime)}</div>
-              <div>Views: {album.views.toLocaleString()}</div>
-              <div className="flex items-center gap-2">
-                <span className={`inline-block w-2 h-2 rounded-full ${
-                  album.privacy === 'public' ? 'bg-green-500' : 
-                  album.privacy === 'hidden' ? 'bg-yellow-500' : 'bg-red-500'
-                }`}></span>
+            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-4">
+              <div className="flex items-center gap-1">
+                <Calendar className="w-3 h-3" />
+                {formatDate(album.datetime)}
+              </div>
+              <div className="flex items-center gap-1">
+                <Eye className="w-3 h-3" />
+                {album.views.toLocaleString()}
+              </div>
+              <div className="flex items-center gap-1">
+                {album.privacy === 'public' ? (
+                  <Users className="w-3 h-3 text-green-600" />
+                ) : (
+                  <Lock className="w-3 h-3 text-amber-600" />
+                )}
                 <span className="capitalize">{album.privacy}</span>
               </div>
             </div>
@@ -83,7 +98,7 @@ export const AlbumGrid: React.FC<AlbumGridProps> = ({
                   e.stopPropagation();
                   onAlbumClick?.(album);
                 }}
-                className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs py-2 px-3 rounded"
+                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground text-sm py-2 px-3 rounded-md transition-colors"
               >
                 View Album
               </button>
@@ -94,9 +109,10 @@ export const AlbumGrid: React.FC<AlbumGridProps> = ({
                     e.stopPropagation();
                     onAlbumDelete(album.id);
                   }}
-                  className="bg-red-500 hover:bg-red-600 text-white text-xs py-2 px-3 rounded"
+                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground p-2 rounded-md transition-colors"
+                  title="Delete album"
                 >
-                  Delete
+                  <Trash2 className="w-4 h-4" />
                 </button>
               )}
             </div>

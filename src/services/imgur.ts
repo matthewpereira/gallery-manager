@@ -1,6 +1,7 @@
 import axios, { type AxiosInstance } from 'axios';
 import type { ImgurApiResponse, ImgurImage, ImgurAlbum } from '../types/imgur';
 import { authService } from './auth';
+import { cacheService, CACHE_KEYS, CACHE_DURATIONS } from './cache';
 
 class ImgurService {
   private api: AxiosInstance;
@@ -43,30 +44,44 @@ class ImgurService {
    * Get current user's account images
    */
   async getAccountImages(page = 0): Promise<ImgurImage[]> {
-    try {
-      const response = await this.api.get<ImgurApiResponse<ImgurImage[]>>(
-        `/account/me/images/${page}`
-      );
-      return response.data.data;
-    } catch (error) {
-      console.error('Failed to fetch account images:', error);
-      throw new Error('Failed to fetch your images');
-    }
+    const cacheKey = `${CACHE_KEYS.IMAGES}_${page}`;
+    
+    return cacheService.get(
+      cacheKey,
+      async () => {
+        const response = await this.api.get<ImgurApiResponse<ImgurImage[]>>(
+          `/account/me/images/${page}`
+        );
+        return response.data.data;
+      },
+      {
+        ttl: CACHE_DURATIONS.MEDIUM,
+        persist: true,
+        backgroundRefresh: true
+      }
+    );
   }
 
   /**
    * Get current user's albums
    */
   async getAccountAlbums(page = 0): Promise<ImgurAlbum[]> {
-    try {
-      const response = await this.api.get<ImgurApiResponse<ImgurAlbum[]>>(
-        `/account/me/albums/${page}`
-      );
-      return response.data.data;
-    } catch (error) {
-      console.error('Failed to fetch account albums:', error);
-      throw new Error('Failed to fetch your albums');
-    }
+    const cacheKey = `${CACHE_KEYS.ALBUMS}_${page}`;
+    
+    return cacheService.get(
+      cacheKey,
+      async () => {
+        const response = await this.api.get<ImgurApiResponse<ImgurAlbum[]>>(
+          `/account/me/albums/${page}`
+        );
+        return response.data.data;
+      },
+      {
+        ttl: CACHE_DURATIONS.MEDIUM,
+        persist: true,
+        backgroundRefresh: true
+      }
+    );
   }
 
   /**
@@ -107,6 +122,12 @@ class ImgurService {
       const response = await this.api.delete<ImgurApiResponse<boolean>>(
         `/image/${imageId}`
       );
+      
+      // Invalidate related caches
+      cacheService.invalidatePattern(CACHE_KEYS.IMAGES);
+      cacheService.invalidatePattern(CACHE_KEYS.ALBUMS); // Albums may contain this image
+      cacheService.invalidate(CACHE_KEYS.IMAGE_DETAIL(imageId));
+      
       return response.data.data;
     } catch (error) {
       console.error('Failed to delete image:', error);
@@ -162,6 +183,11 @@ class ImgurService {
       const response = await this.api.delete<ImgurApiResponse<boolean>>(
         `/album/${albumId}`
       );
+      
+      // Invalidate related caches
+      cacheService.invalidatePattern(CACHE_KEYS.ALBUMS);
+      cacheService.invalidate(CACHE_KEYS.ALBUM_DETAIL(albumId));
+      
       return response.data.data;
     } catch (error) {
       console.error('Failed to delete album:', error);
