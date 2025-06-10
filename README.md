@@ -56,6 +56,31 @@ The app includes full CRUD operations for Imgur:
 - Delete images
 - Create and manage albums
 
+## Deployment
+
+### GitHub Pages (Automatic)
+
+The app is configured to automatically deploy to GitHub Pages when you push to the main branch.
+
+**Setup:**
+1. Go to your repository Settings → Pages
+2. Set Source to "GitHub Actions"
+3. Add these secrets in Settings → Secrets and variables → Actions:
+   - `VITE_IMGUR_CLIENT_ID` - Your Imgur app client ID
+   - `VITE_IMGUR_CLIENT_SECRET` - Your Imgur app client secret  
+   - `VITE_IMGUR_REDIRECT_URI` - Your production callback URL (e.g., `https://yourusername.github.io/gallery-manager/auth/callback`)
+
+**Important:** Update your Imgur app's callback URL to match your GitHub Pages URL.
+
+### Manual Deployment
+
+You can also deploy manually using:
+```bash
+npm run deploy
+```
+
+This builds the project and pushes to the `gh-pages` branch.
+
 ## Tech Stack
 
 - React 18 with TypeScript
@@ -63,3 +88,4 @@ The app includes full CRUD operations for Imgur:
 - Tailwind CSS for styling
 - React Router for navigation
 - Axios for HTTP requests
+- GitHub Actions for CI/CD
