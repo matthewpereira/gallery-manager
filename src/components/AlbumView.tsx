@@ -5,7 +5,7 @@ import type { ImgurImage, ImgurAlbum } from '../types/imgur';
 import { imgurService } from '../services/imgur';
 
 interface AlbumViewProps {
-  album: ImgurAlbum;
+  album: ImgurAlbum | null;
   images: ImgurImage[];
   onBack: () => void;
   onUpload: (files: File[], albumId: string) => void;
@@ -41,6 +41,10 @@ const AlbumView: React.FC<AlbumViewProps> = ({
     reordered.splice(idx, 0, removed);
     setDraggedIdx(idx);
     try {
+      if (!album) {
+        setError('Album is not available');
+        return;
+      }
       onReorder(reordered, album.id);
       setError(null);
     } catch (error) {
@@ -53,18 +57,26 @@ const AlbumView: React.FC<AlbumViewProps> = ({
   // Dropzone for uploading
   const onDrop = useCallback((acceptedFiles: File[]) => {
     try {
+      if (!album) {
+        setError('Album is not available');
+        return;
+      }
       onUpload(acceptedFiles, album.id);
       setError(null);
     } catch (error) {
       setError('Failed to upload image');
       console.error('Upload failed:', error);
     }
-  }, [album.id, onUpload]);
+  }, [album?.id, onUpload]);
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   // Image handlers
   const handleDeleteImage = useCallback(async (imageId: string) => {
     try {
+      if (!album) {
+        setError('Album is not available');
+        return;
+      }
       await imgurService.deleteImage(imageId);
       onDeleteImage(imageId, album.id);
       setError(null);
@@ -72,17 +84,21 @@ const AlbumView: React.FC<AlbumViewProps> = ({
       setError('Failed to delete image');
       console.error('Delete failed:', error);
     }
-  }, [onDeleteImage, album.id]);
+  }, [onDeleteImage, album?.id]);
 
   const handleCaptionUpdate = useCallback((imageId: string, caption: string) => {
     try {
+      if (!album) {
+        setError('Album is not available');
+        return;
+      }
       onUpdateCaption(imageId, caption, album.id);
       setError(null);
     } catch (error) {
       setError('Failed to update caption');
       console.error('Caption update failed:', error);
     }
-  }, [onUpdateCaption, album.id]);
+  }, [onUpdateCaption, album?.id]);
 
   return (
     <div className="p-6">
@@ -92,8 +108,8 @@ const AlbumView: React.FC<AlbumViewProps> = ({
         </div>
       )}
       <button onClick={onBack} className="mb-4 text-primary underline">← Back to Albums</button>
-      <h2 className="text-2xl font-bold mb-2">{album.title || 'Untitled Album'}</h2>
-      <p className="mb-4 text-muted-foreground">{album.description}</p>
+      <h2 className="text-2xl font-bold mb-2">{album?.title || 'Untitled Album'}</h2>
+      <p className="mb-4 text-muted-foreground">{album?.description}</p>
 
       {/* Upload area */}
       <div

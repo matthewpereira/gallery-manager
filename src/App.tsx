@@ -7,6 +7,7 @@ import { ImageGrid } from './components/ImageGrid';
 import { AlbumGrid } from './components/AlbumGrid';
 import { AuthCallback } from './components/AuthCallback';
 import { CacheStats } from './components/CacheStats';
+import AlbumView from './components/AlbumView';
 import { authService } from './services/auth';
 import { imgurService } from './services/imgur';
 import type { ImgurImage, ImgurAlbum } from './types/imgur';
@@ -100,6 +101,16 @@ function Gallery() {
     }
   };
 
+  const handleAlbumClick = async (album: ImgurAlbum) => {
+    try {
+      const fetchedAlbum = await imgurService.getAlbum(album.id);
+      setAlbums([fetchedAlbum]);
+      setCurrentView('albums');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load album details');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
@@ -190,6 +201,7 @@ function Gallery() {
                   <Tabs.Content value="albums" className="outline-none">
                     <AlbumGrid 
                       albums={albums} 
+                      onAlbumClick={handleAlbumClick}
                       onAlbumDelete={handleAlbumDelete}
                     />
                   </Tabs.Content>
@@ -211,12 +223,82 @@ function Gallery() {
 
 function App() {
   const basename = import.meta.env.PROD ? '/gallery-manager' : '';
-  
+  const [album, setAlbum] = useState<ImgurAlbum | null>(null);
+  const [images, setImages] = useState<ImgurImage[]>([]);
+
+  const handleAlbumBack = () => {
+    setAlbum(null);
+  };
+
+  const handleAlbumUpload = async (files: File[], albumId: string) => {
+    try {
+      // Upload files one by one
+      for (const file of files) {
+        await imgurService.uploadImage(file, { album: albumId });
+      }
+      
+      // Fetch updated album after all uploads are complete
+      const response = await imgurService.getAlbum(albumId);
+      setImages(response.images || []);
+    } catch (error) {
+      console.error('Error uploading images:', error);
+    }
+  };
+
+  const handleAlbumDeleteImage = async (imageId: string, albumId: string) => {
+    try {
+      await imgurService.deleteImage(imageId);
+      const response = await imgurService.getAlbum(albumId);
+      setImages(response.images || []);
+    } catch (error) {
+      console.error('Error deleting image:', error);
+    }
+  };
+
+  const handleAlbumReorder = async (newImages: ImgurImage[], albumId: string) => {
+    try {
+      // Update image positions in the album
+      for (const image of newImages) {
+        await imgurService.updateImage(image.id, { 
+          description: image.description || '',
+          title: image.title || ''
+        });
+      }
+      setImages(newImages);
+    } catch (error) {
+      console.error('Error reordering images:', error);
+    }
+  };
+
+  const handleAlbumUpdateCaption = async (imageId: string, caption: string, albumId: string) => {
+    try {
+      await imgurService.updateImage(imageId, { description: caption });
+      const response = await imgurService.getAlbum(albumId);
+      setImages(response.images || []);
+    } catch (error) {
+      console.error('Error updating caption:', error);
+    }
+  };
+
   return (
     <Router basename={basename}>
       <Routes>
         <Route path="/" element={<Gallery />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route 
+          path="/a/:albumId"
+          element={
+            <AlbumView
+              album={album}
+              images={images}
+              onBack={handleAlbumBack}
+              onUpload={handleAlbumUpload}
+              onDeleteImage={handleAlbumDeleteImage}
+              onReorder={handleAlbumReorder}
+              onUpdateCaption={handleAlbumUpdateCaption}
+            />
+          }
+        />
       </Routes>
     </Router>
   );
