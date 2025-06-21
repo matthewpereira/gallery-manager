@@ -11,7 +11,7 @@ export const handleUpload = async (files: File[], albumId: string) => {
   }
 };
 
-export const handleDeleteImage = async (imageId: string, albumId: string) => {
+export const handleDeleteImage = async (imageId: string) => {
   try {
     await imgurService.deleteImage(imageId);
   } catch (error) {
@@ -20,7 +20,7 @@ export const handleDeleteImage = async (imageId: string, albumId: string) => {
   }
 };
 
-export const handleReorder = async (images: ImgurImage[], albumId: string) => {
+export const handleReorder = async (images: ImgurImage[]) => {
   try {
     // Reordering is not directly supported by Imgur API, so we'll need to update each image's position
     for (const image of images) {
@@ -35,7 +35,7 @@ export const handleReorder = async (images: ImgurImage[], albumId: string) => {
   }
 };
 
-export const handleUpdateCaption = async (imageId: string, caption: string, albumId: string) => {
+export const handleUpdateCaption = async (imageId: string, caption: string) => {
   try {
     await imgurService.updateImage(imageId, { description: caption });
   } catch (error) {

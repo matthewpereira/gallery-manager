@@ -255,7 +255,7 @@ function App() {
     }
   };
 
-  const handleAlbumReorder = async (newImages: ImgurImage[], albumId: string) => {
+  const handleAlbumReorder = async (newImages: ImgurImage[]) => {
     try {
       // Update image positions in the album
       for (const image of newImages) {
