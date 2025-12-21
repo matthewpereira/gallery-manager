@@ -1,10 +1,10 @@
 import React from 'react';
 import { Calendar, Eye, Lock, Users, Image as ImageIcon, Trash2 } from 'lucide-react';
-import type { ImgurAlbum } from '../types/imgur';
+import type { Album } from '../types/models';
 
 interface AlbumGridProps {
-  albums: ImgurAlbum[];
-  onAlbumClick?: (album: ImgurAlbum) => void;
+  albums: Album[];
+  onAlbumClick?: (album: Album) => void;
   onAlbumDelete?: (albumId: string) => void;
 }
 
@@ -13,8 +13,8 @@ export const AlbumGrid: React.FC<AlbumGridProps> = ({
   onAlbumClick,
   onAlbumDelete 
 }) => {
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString();
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString();
   };
 
   if (albums.length === 0) {
@@ -33,13 +33,13 @@ export const AlbumGrid: React.FC<AlbumGridProps> = ({
     <div className="grid-gallery animate-fade-in">
       {albums.map((album) => (
         <div key={album.id} className="bg-card border border-border rounded-lg overflow-hidden card-hover animate-slide-up">
-          <div 
+          <div
             className="relative cursor-pointer group"
             onClick={() => onAlbumClick?.(album)}
           >
-            {album.cover ? (
+            {album.coverImageUrl ? (
               <img
-                src={`https://i.imgur.com/${album.cover}m.jpg`}
+                src={album.coverImageUrl.replace('.jpg', 'm.jpg')}
                 alt={album.title || 'Album cover'}
                 className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                 loading="lazy"
@@ -49,14 +49,14 @@ export const AlbumGrid: React.FC<AlbumGridProps> = ({
                 <ImageIcon className="w-12 h-12 text-muted-foreground" />
               </div>
             )}
-            
+
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            
+
             <div className="absolute bottom-3 left-3 right-3">
               <div className="glassmorphism rounded-md px-2 py-1">
                 <div className="flex items-center gap-1 text-white text-sm font-medium">
                   <ImageIcon className="w-3 h-3" />
-                  {album.images_count} {album.images_count === 1 ? 'image' : 'images'}
+                  {album.imageCount} {album.imageCount === 1 ? 'image' : 'images'}
                 </div>
               </div>
             </div>
@@ -76,12 +76,14 @@ export const AlbumGrid: React.FC<AlbumGridProps> = ({
             <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-4">
               <div className="flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
-                {formatDate(album.datetime)}
+                {formatDate(album.createdAt)}
               </div>
-              <div className="flex items-center gap-1">
-                <Eye className="w-3 h-3" />
-                {album.views.toLocaleString()}
-              </div>
+              {album.views !== undefined && (
+                <div className="flex items-center gap-1">
+                  <Eye className="w-3 h-3" />
+                  {album.views.toLocaleString()}
+                </div>
+              )}
               <div className="flex items-center gap-1">
                 {album.privacy === 'public' ? (
                   <Users className="w-3 h-3 text-green-600" />

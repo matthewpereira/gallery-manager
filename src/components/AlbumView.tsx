@@ -1,17 +1,17 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { GripVertical, Trash2 } from 'lucide-react';
-import type { ImgurImage, ImgurAlbum } from '../types/imgur';
-import { imgurService } from '../services/imgur';
+import type { AlbumDetail, Image } from '../types/models';
+import { useStorage } from '../contexts/StorageContext';
 
 interface AlbumViewProps {
-  album: ImgurAlbum | null;
-  images: ImgurImage[];
+  album: AlbumDetail | null;
+  images: Image[];
   onBack: () => void;
   onUpload: (files: File[], albumId: string) => void;
-  onDeleteImage: (imageId: string, albumId: string) => void;
-  onReorder: (images: ImgurImage[], albumId: string) => void;
-  onUpdateCaption: (imageId: string, caption: string, albumId: string) => void;
+  onDeleteImage: (imageId: string) => void;
+  onReorder: (images: Image[]) => void;
+  onUpdateCaption: (imageId: string, caption: string) => void;
 }
 
 const AlbumView: React.FC<AlbumViewProps> = ({
@@ -23,6 +23,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
   onReorder,
   onUpdateCaption,
 }) => {
+  const storage = useStorage();
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +46,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
         setError('Album is not available');
         return;
       }
-      onReorder(reordered, album.id);
+      onReorder(reordered);
       setError(null);
     } catch (error) {
       setError('Failed to reorder images');
@@ -77,14 +78,14 @@ const AlbumView: React.FC<AlbumViewProps> = ({
         setError('Album is not available');
         return;
       }
-      await imgurService.deleteImage(imageId);
-      onDeleteImage(imageId, album.id);
+      await storage.deleteImage(imageId);
+      onDeleteImage(imageId);
       setError(null);
     } catch (error) {
       setError('Failed to delete image');
       console.error('Delete failed:', error);
     }
-  }, [onDeleteImage, album?.id]);
+  }, [storage, onDeleteImage, album?.id]);
 
   const handleCaptionUpdate = useCallback((imageId: string, caption: string) => {
     try {
@@ -92,7 +93,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
         setError('Album is not available');
         return;
       }
-      onUpdateCaption(imageId, caption, album.id);
+      onUpdateCaption(imageId, caption);
       setError(null);
     } catch (error) {
       setError('Failed to update caption');
@@ -137,7 +138,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
             onDragOver={(e) => { e.preventDefault(); handleDragOver(idx); }}
             onDragEnd={handleDragEnd}
           >
-            <img src={img.link} alt={img.description || ''} className="rounded mb-2 object-cover h-32 w-full" />
+            <img src={img.url} alt={img.description || ''} className="rounded mb-2 object-cover h-32 w-full" />
             <input
               type="text"
               className="text-xs p-1 border rounded mb-2"
