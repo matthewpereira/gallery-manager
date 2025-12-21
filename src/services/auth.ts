@@ -39,18 +39,21 @@ class AuthService {
 
   private async initializeAuth0() {
     if (this.isAuth0Initialized) return;
-    
+
+    // Ensure we use the environment variable for redirect URI
+    const redirectUri = this.auth0RedirectUri || window.location.origin;
+
     this.auth0Client = new Auth0Client({
       domain: this.auth0Domain,
       clientId: this.auth0ClientId,
       authorizationParams: {
-        redirect_uri: this.auth0RedirectUri || window.location.origin,
+        redirect_uri: redirectUri,
         audience: this.auth0Audience,
       },
       cacheLocation: 'localstorage',
       useRefreshTokens: true,
     });
-    
+
     this.isAuth0Initialized = true;
   }
 
@@ -91,16 +94,10 @@ class AuthService {
     if (!returnTo || returnTo === '/login') {
       returnTo = '/';
     }
-    
-    // Use the current page as the redirect_uri for Auth0
-    const redirectUri = window.location.origin;
-    
+
     console.log('Initiating login with returnTo:', returnTo);
-    
+
     await this.auth0Client?.loginWithRedirect({
-      authorizationParams: {
-        redirect_uri: redirectUri,
-      },
       appState: { returnTo },
     });
   }
@@ -293,12 +290,13 @@ class AuthService {
     // Clear Imgur token
     this.imgurToken = null;
     localStorage.removeItem(this.imgurTokenKey);
-    
+
     // Logout from Auth0
     if (this.auth0Client) {
+      const logoutRedirectUri = this.auth0RedirectUri || window.location.origin;
       await this.auth0Client.logout({
         logoutParams: {
-          returnTo: window.location.origin,
+          returnTo: logoutRedirectUri,
         },
       });
     }
