@@ -12,7 +12,8 @@ This app uses **two separate Imgur applications** to support both development an
 
 **Settings:**
 - **Client ID:** `5df669f33464fd3`
-- **Callback URL:** `https://matthewpereira.github.io/gallery-manager/auth/callback`
+- **Callback URL:** `https://matthewpereira.github.io/gallery-manager` (root, not /auth/callback)
+- **Authorization Type:** OAuth 2 authorization **without** a callback URL (implicit flow)
 - **Environment file:** `.env.production`
 
 **Status:** ✅ Already set up
@@ -27,10 +28,11 @@ This app uses **two separate Imgur applications** to support both development an
 
 2. Fill out the form:
    - **Application name:** `Gallery Manager (Dev)`
-   - **Authorization type:** ☑️ **OAuth 2 authorization with a callback URL**
-   - **Authorization callback URL:** `http://localhost:5173/auth/callback`
+   - **Authorization type:** ☑️ **OAuth 2 authorization without a callback URL** (implicit flow)
    - **Email:** Your email address
    - **Description:** `Development version of Gallery Manager`
+
+   **Note:** We use "without callback URL" because Imgur's implicit flow returns the token in the URL hash, not via a callback endpoint.
 
 3. Click **Submit**
 
@@ -45,7 +47,7 @@ Open `.env.development` and replace the placeholder values:
 ```bash
 VITE_IMGUR_CLIENT_ID=abc123def456        # ← Your DEV client ID
 VITE_IMGUR_CLIENT_SECRET=xyz789uvw012    # ← Your DEV client secret
-VITE_IMGUR_REDIRECT_URI=http://localhost:5173/auth/callback
+VITE_IMGUR_REDIRECT_URI=http://localhost:5173  # ← Root URL (no /auth/callback)
 ```
 
 ### Step 3: Test It
