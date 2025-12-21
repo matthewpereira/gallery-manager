@@ -66,8 +66,13 @@ export class ImgurAdapter implements StorageProvider {
       try {
         const isAccountEndpoint = config.url?.startsWith('/account');
         const isImageUpload = config.url?.startsWith('/image') && config.method === 'post';
+        const isDeleteOperation = config.method === 'delete';
+        const isUpdateOperation = config.method === 'put' || config.method === 'patch';
 
-        if (isAccountEndpoint || isImageUpload) {
+        // Require OAuth for: account endpoints, uploads, deletes, and updates
+        const requiresOAuth = isAccountEndpoint || isImageUpload || isDeleteOperation || isUpdateOperation;
+
+        if (requiresOAuth) {
           const token = await authService.getValidToken('imgur');
           if (!token) {
             throw new Error('Imgur authentication required. Please sign in with Imgur.');
@@ -78,7 +83,7 @@ export class ImgurAdapter implements StorageProvider {
         }
 
         console.log(`[Imgur API] ${config.method?.toUpperCase()} ${config.url}`, {
-          authType: isAccountEndpoint || isImageUpload ? 'OAuth' : 'Client-ID',
+          authType: requiresOAuth ? 'OAuth' : 'Client-ID',
         });
 
         return config;
