@@ -13,8 +13,9 @@ export const AlbumGrid: React.FC<AlbumGridProps> = ({
   onAlbumClick,
   onAlbumDelete 
 }) => {
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString();
+  const formatDate = (date: Date | string | number) => {
+    const dateObj = date instanceof Date ? date : new Date(date);
+    return dateObj.toLocaleDateString();
   };
 
   if (albums.length === 0) {

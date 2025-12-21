@@ -13,8 +13,9 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
   onImageClick,
   onImageDelete 
 }) => {
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString();
+  const formatDate = (date: Date | string | number) => {
+    const dateObj = date instanceof Date ? date : new Date(date);
+    return dateObj.toLocaleDateString();
   };
 
   const formatFileSize = (bytes: number) => {
