@@ -1,5 +1,5 @@
 import { Routes, Route, useLocation, Link, useNavigate } from 'react-router-dom';
-import { FolderOpen, LogOut, Image as ImageIcon, Plus, ArrowLeft } from 'lucide-react';
+import { FolderOpen, LogOut, Image as ImageIcon, Plus, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './auth/AuthProvider';
 import { Login } from './pages/Login';
@@ -47,16 +47,22 @@ function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<'albums' | 'album'>('albums');
   const [isCreateAlbumModalOpen, setIsCreateAlbumModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMorePages, setHasMorePages] = useState(true);
 
-  // Fetch albums on component mount
+  // Fetch albums when page changes
   useEffect(() => {
     const fetchAlbums = async () => {
       try {
         setLoading(true);
+        setError(null);
         const token = await getToken();
         if (token) {
-          const albums = await storage.listAlbums();
-          setAlbums(albums);
+          const fetchedAlbums = await storage.listAlbums(currentPage);
+          setAlbums(fetchedAlbums);
+
+          // Check if there are more pages (Imgur returns 50 albums per page)
+          setHasMorePages(fetchedAlbums.length === 50);
         }
       } catch (error) {
         console.error('Failed to fetch albums:', error);
@@ -67,7 +73,7 @@ function Dashboard() {
     };
 
     fetchAlbums();
-  }, [getToken, storage]);
+  }, [currentPage, getToken, storage]);
 
   // Handle album selection
   const handleAlbumClick = async (album: Album) => {
@@ -180,6 +186,19 @@ function Dashboard() {
     setView('albums');
   };
 
+  // Handle pagination
+  const handleNextPage = () => {
+    if (hasMorePages) {
+      setCurrentPage(prevPage => prevPage + 1);
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 0) {
+      setCurrentPage(prevPage => prevPage - 1);
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -277,11 +296,65 @@ function Dashboard() {
             </div>
             
             {albums.length > 0 ? (
-              <AlbumGrid 
-                albums={albums} 
-                onAlbumClick={handleAlbumClick}
-                onAlbumDelete={handleAlbumDelete}
-              />
+              <>
+                <AlbumGrid
+                  albums={albums}
+                  onAlbumClick={handleAlbumClick}
+                  onAlbumDelete={handleAlbumDelete}
+                />
+
+                {/* Pagination Controls */}
+                <div className="mt-6 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg">
+                  <div className="flex flex-1 justify-between sm:hidden">
+                    <button
+                      onClick={handlePreviousPage}
+                      disabled={currentPage === 0}
+                      className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={handleNextPage}
+                      disabled={!hasMorePages}
+                      className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
+                  <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm text-gray-700">
+                        Page <span className="font-medium">{currentPage + 1}</span>
+                        {' · '}
+                        <span className="font-medium">{albums.length}</span> albums on this page
+                      </p>
+                    </div>
+                    <div>
+                      <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                        <button
+                          onClick={handlePreviousPage}
+                          disabled={currentPage === 0}
+                          className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="sr-only">Previous</span>
+                          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                        </button>
+                        <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300">
+                          {currentPage + 1}
+                        </span>
+                        <button
+                          onClick={handleNextPage}
+                          disabled={!hasMorePages}
+                          className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <span className="sr-only">Next</span>
+                          <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                        </button>
+                      </nav>
+                    </div>
+                  </div>
+                </div>
+              </>
             ) : (
               <div className="rounded-lg bg-white p-8 text-center">
                 <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
