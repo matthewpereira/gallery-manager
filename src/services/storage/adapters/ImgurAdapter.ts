@@ -66,11 +66,12 @@ export class ImgurAdapter implements StorageProvider {
       try {
         const isAccountEndpoint = config.url?.startsWith('/account');
         const isImageUpload = config.url?.startsWith('/image') && config.method === 'post';
+        const isAlbumOperation = config.url?.startsWith('/album') && config.method === 'post';
         const isDeleteOperation = config.method === 'delete';
         const isUpdateOperation = config.method === 'put' || config.method === 'patch';
 
-        // Require OAuth for: account endpoints, uploads, deletes, and updates
-        const requiresOAuth = isAccountEndpoint || isImageUpload || isDeleteOperation || isUpdateOperation;
+        // Require OAuth for: account endpoints, uploads, album operations, deletes, and updates
+        const requiresOAuth = isAccountEndpoint || isImageUpload || isAlbumOperation || isDeleteOperation || isUpdateOperation;
 
         if (requiresOAuth) {
           const token = await authService.getValidToken('imgur');
