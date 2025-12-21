@@ -1,220 +1,310 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import * as Tabs from '@radix-ui/react-tabs';
-import { Image as ImageIcon, FolderOpen, Github } from 'lucide-react';
-import { AuthButton } from './components/AuthButton';
-import { ImageGrid } from './components/ImageGrid';
+import { Routes, Route, useLocation, Link, useNavigate } from 'react-router-dom';
+import { FolderOpen, LogOut, Image as ImageIcon, Plus, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from './auth/AuthProvider';
+import { Login } from './pages/Login';
 import { AlbumGrid } from './components/AlbumGrid';
-import { AuthCallback } from './components/AuthCallback';
-import { CacheStats } from './components/CacheStats';
 import AlbumView from './components/AlbumView';
-import { authService } from './services/auth';
-import { imgurService } from './services/imgur';
-import type { ImgurImage, ImgurAlbum } from './types/imgur';
+import { useStorage } from './contexts/StorageContext';
+import type { Album, AlbumDetail, Image } from './types/models';
 
-function Gallery() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [images, setImages] = useState<ImgurImage[]>([]);
-  const [albums, setAlbums] = useState<ImgurAlbum[]>([]);
-  const [currentView, setCurrentView] = useState<'albums' | 'images'>('albums');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>('');
+// A wrapper component that redirects to the login page if not authenticated
+const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if we're receiving an auth callback at the root path
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    
-    if (code) {
-      handleAuthCallback(code);
-    } else {
-      setIsAuthenticated(authService.isAuthenticated());
+    if (!isLoading && !isAuthenticated) {
+      const returnTo = location.pathname + location.search;
+      navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`);
     }
-  }, []);
+  }, [isAuthenticated, isLoading, location, navigate]);
 
-  const handleAuthCallback = async (code: string) => {
-    setLoading(true);
-    try {
-      await authService.exchangeCodeForToken(code);
-      setIsAuthenticated(true);
-      // Clear the URL parameters
-      window.history.replaceState({}, document.title, window.location.pathname);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed');
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
+  if (!isAuthenticated) {
+    return null; // Will be redirected by the useEffect
+  }
+
+  return children;
+};
+
+function Dashboard() {
+  const { user, getToken, logout } = useAuth();
+  const storage = useStorage();
+  const [albums, setAlbums] = useState<Album[]>([]);
+  const [images, setImages] = useState<Image[]>([]);
+  const [selectedAlbum, setSelectedAlbum] = useState<AlbumDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<'albums' | 'album'>('albums');
+
+  // Fetch albums on component mount
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchAlbums();
-      fetchImages();
-    }
-  }, [isAuthenticated]);
+    const fetchAlbums = async () => {
+      try {
+        setLoading(true);
+        const token = await getToken();
+        if (token) {
+          const albums = await storage.listAlbums();
+          setAlbums(albums);
+        }
+      } catch (error) {
+        console.error('Failed to fetch albums:', error);
+        setError('Failed to load albums. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const fetchImages = async () => {
-    setLoading(true);
-    setError('');
+    fetchAlbums();
+  }, [getToken, storage]);
+
+  // Handle album selection
+  const handleAlbumClick = async (album: Album) => {
     try {
-      const fetchedImages = await imgurService.getAccountImages();
-      setImages(fetchedImages);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch images');
+      setLoading(true);
+      const albumDetails = await storage.getAlbum(album.id);
+      setSelectedAlbum(albumDetails);
+      setImages(albumDetails.images || []);
+      setView('album');
+    } catch (error) {
+      console.error('Failed to load album:', error);
+      setError('Failed to load album. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchAlbums = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const fetchedAlbums = await imgurService.getAccountAlbums();
-      setAlbums(fetchedAlbums);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch albums');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleImageDelete = async (imageId: string) => {
-    if (!confirm('Are you sure you want to delete this image?')) return;
-    
-    try {
-      await imgurService.deleteImage(imageId);
-      setImages(images.filter(img => img.id !== imageId));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete image');
-    }
-  };
-
+  // Handle album deletion
   const handleAlbumDelete = async (albumId: string) => {
-    if (!confirm('Are you sure you want to delete this album?')) return;
-    
+    if (!window.confirm('Are you sure you want to delete this album?')) return;
+
     try {
-      await imgurService.deleteAlbum(albumId);
+      setLoading(true);
+      await storage.deleteAlbum(albumId);
       setAlbums(albums.filter(album => album.id !== albumId));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete album');
+    } catch (error) {
+      console.error('Failed to delete album:', error);
+      setError('Failed to delete album. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleAlbumClick = async (album: ImgurAlbum) => {
+  // Handle image upload to album
+  const handleImageUpload = async (files: File[], albumId: string) => {
     try {
-      const fetchedAlbum = await imgurService.getAlbum(album.id);
-      setAlbums([fetchedAlbum]);
-      setCurrentView('albums');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load album details');
+      setLoading(true);
+      for (const file of files) {
+        await storage.uploadImage(file, { albumId });
+      }
+      // Refresh album after upload
+      if (selectedAlbum) {
+        const updatedAlbum = await storage.getAlbum(albumId);
+        setImages(updatedAlbum.images || []);
+      }
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      setError('Failed to upload image. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
+
+  // Handle image deletion
+  const handleImageDelete = async (imageId: string) => {
+    if (!window.confirm('Are you sure you want to delete this image?')) return;
+
+    try {
+      setLoading(true);
+      await storage.deleteImage(imageId);
+      setImages(images.filter(img => img.id !== imageId));
+    } catch (error) {
+      console.error('Failed to delete image:', error);
+      setError('Failed to delete image. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle image reordering
+  const handleImageReorder = (reorderedImages: Image[]) => {
+    // Update local state immediately for a responsive UI
+    setImages(reorderedImages);
+
+    // In a real app, you would make an API call to save the new order
+    console.log('Reordered images:', reorderedImages);
+    // Note: The Imgur API doesn't support reordering directly
+  };
+
+  // Handle caption update
+  const handleCaptionUpdate = async (imageId: string, caption: string) => {
+    try {
+      setLoading(true);
+      await storage.updateImage(imageId, { description: caption });
+      setImages(images.map(img =>
+        img.id === imageId ? { ...img, description: caption } : img
+      ));
+    } catch (error) {
+      console.error('Failed to update caption:', error);
+      setError('Failed to update caption. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle back to albums view
+  const handleBackToAlbums = () => {
+    setSelectedAlbum(null);
+    setView('albums');
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="rounded-lg bg-red-50 p-6 text-center">
+          <p className="text-red-600">{error}</p>
+          <button
+            onClick={() => setError(null)}
+            className="mt-4 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary rounded-lg">
-                <ImageIcon className="w-6 h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-foreground">
-                  Gallery Manager
-                </h1>
-                <p className="text-sm text-muted-foreground">Imgur Collection</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <a
-                href="https://github.com/matthewpereira/gallery-manager"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-                title="View on GitHub"
+    <div className="min-h-screen bg-gray-50">
+      <header className="border-b border-gray-200 bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-xl font-bold text-gray-900">Gallery Manager</h1>
+            <nav className="flex items-center space-x-4">
+              {view === 'album' && selectedAlbum && (
+                <button
+                  onClick={handleBackToAlbums}
+                  className="flex items-center space-x-1 rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  <span>Back to Albums</span>
+                </button>
+              )}
+              <Link
+                to="/"
+                className="flex items-center space-x-1 rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700"
               >
-                <Github className="w-5 h-5" />
-              </a>
-              <AuthButton 
-                isAuthenticated={isAuthenticated} 
-                onAuthChange={setIsAuthenticated}
+                <FolderOpen className="h-4 w-4" />
+                <span>Albums</span>
+              </Link>
+            </nav>
+          </div>
+          <div className="flex items-center space-x-4">
+            {user?.picture && (
+              <img
+                src={user.picture}
+                alt={user.name || 'User'}
+                className="h-8 w-8 rounded-full"
               />
-            </div>
+            )}
+            <button
+              onClick={() => {
+                const redirectUri = import.meta.env.VITE_IMGUR_REDIRECT_URI || `${window.location.origin}/auth/callback`;
+                const authUrl = `https://api.imgur.com/oauth2/authorize?client_id=${import.meta.env.VITE_IMGUR_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}`;
+                console.log('Redirecting to Imgur OAuth:', authUrl);
+                window.location.href = authUrl;
+              }}
+              className="flex items-center space-x-1 rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700"
+            >
+              <ImageIcon className="h-4 w-4" />
+              <span>Connect Imgur</span>
+            </button>
+            <button
+              onClick={() => logout()}
+              className="flex items-center space-x-1 rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {!isAuthenticated ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="text-center max-w-md">
-              <div className="p-4 bg-primary/10 rounded-full w-fit mx-auto mb-6">
-                <ImageIcon className="w-12 h-12 text-primary" />
-              </div>
-              <h2 className="text-2xl font-semibold mb-4 text-foreground">Welcome to Gallery Manager</h2>
-              <p className="text-muted-foreground mb-8 leading-relaxed">
-                Connect your Imgur account to view and manage your images and albums in a beautiful, organized interface.
-              </p>
-              <AuthButton 
-                isAuthenticated={false} 
-                onAuthChange={setIsAuthenticated}
-              />
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        {view === 'albums' ? (
+          <div>
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-lg font-medium text-gray-900">Your Albums</h2>
+              <button
+                onClick={() => {
+                  // In a real app, you would show a modal to create a new album
+                  alert('Create new album functionality would go here');
+                }}
+                className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+              >
+                <Plus className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
+                New Album
+              </button>
             </div>
-          </div>
-        ) : (
-          <>
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg mb-6">
-                <p className="font-medium">Error</p>
-                <p className="text-sm">{error}</p>
+            
+            {albums.length > 0 ? (
+              <AlbumGrid 
+                albums={albums} 
+                onAlbumClick={handleAlbumClick}
+                onAlbumDelete={handleAlbumDelete}
+              />
+            ) : (
+              <div className="rounded-lg bg-white p-8 text-center">
+                <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No albums</h3>
+                <p className="mt-1 text-sm text-gray-500">Get started by creating a new album.</p>
+                <div className="mt-6">
+                  <button
+                    type="button"
+                    className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                    onClick={() => {
+                      // In a real app, you would show a modal to create a new album
+                      alert('Create new album functionality would go here');
+                    }}
+                  >
+                    <Plus className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
+                    New Album
+                  </button>
+                </div>
               </div>
             )}
-
-            <Tabs.Root value={currentView} onValueChange={(value) => setCurrentView(value as 'albums' | 'images')}>
-              <CacheStats />
-              <Tabs.List className="flex bg-muted rounded-lg p-1 mb-8 w-fit">
-                <Tabs.Trigger 
-                  value="albums"
-                  className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"
-                >
-                  <FolderOpen className="w-4 h-4" />
-                  Albums ({albums.length})
-                </Tabs.Trigger>
-                <Tabs.Trigger 
-                  value="images"
-                  className="flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground"
-                >
-                  <ImageIcon className="w-4 h-4" />
-                  Images ({images.length})
-                </Tabs.Trigger>
-              </Tabs.List>
-
-              {loading ? (
-                <div className="flex flex-col items-center justify-center py-20">
-                  <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary border-t-transparent mb-4"></div>
-                  <p className="text-muted-foreground">Loading your {currentView}...</p>
-                </div>
-              ) : (
-                <>
-                  <Tabs.Content value="albums" className="outline-none">
-                    <AlbumGrid 
-                      albums={albums} 
-                      onAlbumClick={handleAlbumClick}
-                      onAlbumDelete={handleAlbumDelete}
-                    />
-                  </Tabs.Content>
-                  <Tabs.Content value="images" className="outline-none">
-                    <ImageGrid 
-                      images={images} 
-                      onImageDelete={handleImageDelete}
-                    />
-                  </Tabs.Content>
-                </>
-              )}
-            </Tabs.Root>
-          </>
+          </div>
+        ) : (
+          selectedAlbum && (
+            <AlbumView
+              album={selectedAlbum}
+              images={images}
+              onBack={handleBackToAlbums}
+              onUpload={handleImageUpload}
+              onDeleteImage={handleImageDelete}
+              onReorder={handleImageReorder}
+              onUpdateCaption={handleCaptionUpdate}
+            />
+          )
         )}
       </main>
     </div>
@@ -222,85 +312,25 @@ function Gallery() {
 }
 
 function App() {
-  const basename = import.meta.env.PROD ? '/gallery-manager' : '';
-  const [album, setAlbum] = useState<ImgurAlbum | null>(null);
-  const [images, setImages] = useState<ImgurImage[]>([]);
-
-  const handleAlbumBack = () => {
-    setAlbum(null);
-  };
-
-  const handleAlbumUpload = async (files: File[], albumId: string) => {
-    try {
-      // Upload files one by one
-      for (const file of files) {
-        await imgurService.uploadImage(file, { album: albumId });
-      }
-      
-      // Fetch updated album after all uploads are complete
-      const response = await imgurService.getAlbum(albumId);
-      setImages(response.images || []);
-    } catch (error) {
-      console.error('Error uploading images:', error);
-    }
-  };
-
-  const handleAlbumDeleteImage = async (imageId: string, albumId: string) => {
-    try {
-      await imgurService.deleteImage(imageId);
-      const response = await imgurService.getAlbum(albumId);
-      setImages(response.images || []);
-    } catch (error) {
-      console.error('Error deleting image:', error);
-    }
-  };
-
-  const handleAlbumReorder = async (newImages: ImgurImage[]) => {
-    try {
-      // Update image positions in the album
-      for (const image of newImages) {
-        await imgurService.updateImage(image.id, { 
-          description: image.description || '',
-          title: image.title || ''
-        });
-      }
-      setImages(newImages);
-    } catch (error) {
-      console.error('Error reordering images:', error);
-    }
-  };
-
-  const handleAlbumUpdateCaption = async (imageId: string, caption: string, albumId: string) => {
-    try {
-      await imgurService.updateImage(imageId, { description: caption });
-      const response = await imgurService.getAlbum(albumId);
-      setImages(response.images || []);
-    } catch (error) {
-      console.error('Error updating caption:', error);
-    }
-  };
-
   return (
-    <Router basename={basename}>
+    <div className="min-h-screen bg-gray-50">
       <Routes>
-        <Route path="/" element={<Gallery />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route 
-          path="/a/:albumId"
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/"
           element={
-            <AlbumView
-              album={album}
-              images={images}
-              onBack={handleAlbumBack}
-              onUpload={handleAlbumUpload}
-              onDeleteImage={handleAlbumDeleteImage}
-              onReorder={handleAlbumReorder}
-              onUpdateCaption={handleAlbumUpdateCaption}
-            />
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
           }
         />
+        <Route path="*" element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
       </Routes>
-    </Router>
+    </div>
   );
 }
 

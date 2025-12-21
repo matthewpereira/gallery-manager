@@ -11,7 +11,7 @@ type CacheOptions = {
 };
 
 class CacheService {
-  private memoryCache = new Map<string, CacheEntry<any>>();
+  private memoryCache = new Map<string, CacheEntry<unknown>>();
   private readonly DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes
   private readonly STORAGE_PREFIX = 'imgur_cache_';
 
@@ -25,8 +25,7 @@ class CacheService {
   ): Promise<T> {
     const {
       ttl = this.DEFAULT_TTL,
-      persist = true,
-      backgroundRefresh = true
+      persist = true
     } = options;
 
     // Check memory cache first
@@ -42,61 +41,33 @@ class CacheService {
     }
 
     const now = Date.now();
+    const isFresh = cached && (now - cached.timestamp) < cached.ttl;
     
-    // If we have cached data and it's still fresh, return it
-    if (cached && (now - cached.timestamp) < cached.ttl) {
-      return cached.data;
+    // If we have fresh cached data, return it
+    if (cached && isFresh) {
+      return cached.data as T;
     }
 
-    // If we have stale data and background refresh is enabled, return stale data
-    // and refresh in background
-    if (cached && backgroundRefresh) {
-      this.refreshInBackground(key, fetcher, { ttl, persist });
-      return cached.data;
-    }
-
-    // No cache or expired without background refresh - fetch fresh data
-    return this.fetchAndCache(key, fetcher, { ttl, persist });
-  }
-
-  /**
-   * Fetch fresh data and cache it
-   */
-  private async fetchAndCache<T>(
-    key: string,
-    fetcher: () => Promise<T>,
-    options: CacheOptions
-  ): Promise<T> {
+    // Always try to fetch fresh data first, only use stale cache as fallback
     try {
       const data = await fetcher();
-      this.set(key, data, options);
+      this.set(key, data, { ttl, persist });
       return data;
     } catch (error) {
       // If fetch fails and we have stale data, return it
-      const stale = this.memoryCache.get(key) || this.getFromStorage(key);
-      if (stale) {
-        console.warn(`Failed to fetch ${key}, returning stale data:`, error);
-        return stale.data;
+      if (cached) {
+        console.warn(`Using stale cache for ${key} after fetch failed:`, error);
+        return cached.data as T;
       }
       throw error;
     }
   }
 
   /**
-   * Refresh data in background
+   * Fetch fresh data and cache it
    */
-  private async refreshInBackground<T>(
-    key: string,
-    fetcher: () => Promise<T>,
-    options: CacheOptions
-  ): Promise<void> {
-    try {
-      const data = await fetcher();
-      this.set(key, data, options);
-    } catch (error) {
-      console.warn(`Background refresh failed for ${key}:`, error);
-    }
-  }
+  // Removed unused fetchAndCache and refreshInBackground methods
+  // to simplify the code and prevent potential retry loops
 
   /**
    * Set data in cache
@@ -189,15 +160,32 @@ class CacheService {
   private getFromStorage<T>(key: string): CacheEntry<T> | null {
     try {
       const stored = localStorage.getItem(this.STORAGE_PREFIX + key);
-      return stored ? JSON.parse(stored) : null;
-    } catch {
+      if (!stored) return null;
+      
+      const parsed = JSON.parse(stored);
+      // Basic validation of the stored data shape
+      if (parsed && typeof parsed === 'object' && 
+          'data' in parsed && 
+          'timestamp' in parsed && 
+          'ttl' in parsed) {
+        return parsed as CacheEntry<T>;
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error reading from localStorage for key ${key}:`, error);
       return null;
     }
   }
 
   private setInStorage<T>(key: string, entry: CacheEntry<T>): void {
     try {
-      localStorage.setItem(this.STORAGE_PREFIX + key, JSON.stringify(entry));
+      // Ensure we're storing a valid CacheEntry
+      const entryToStore: CacheEntry<unknown> = {
+        data: entry.data,
+        timestamp: entry.timestamp,
+        ttl: entry.ttl
+      };
+      localStorage.setItem(this.STORAGE_PREFIX + key, JSON.stringify(entryToStore));
     } catch (error) {
       // Handle localStorage quota exceeded
       console.warn('Failed to store in localStorage:', error);

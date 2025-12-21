@@ -1,10 +1,10 @@
 import React from 'react';
 import { Calendar, Eye, Monitor, FileText, Trash2, Image as ImageIcon, Play } from 'lucide-react';
-import type { ImgurImage } from '../types/imgur';
+import type { Image } from '../types/models';
 
 interface ImageGridProps {
-  images: ImgurImage[];
-  onImageClick?: (image: ImgurImage) => void;
+  images: Image[];
+  onImageClick?: (image: Image) => void;
   onImageDelete?: (imageId: string) => void;
 }
 
@@ -13,8 +13,8 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
   onImageClick,
   onImageDelete 
 }) => {
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString();
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString();
   };
 
   const formatFileSize = (bytes: number) => {
@@ -46,8 +46,8 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
             onClick={() => onImageClick?.(image)}
           >
             <img
-              src={image.link}
-              alt={image.title || 'Imgur image'}
+              src={image.url}
+              alt={image.title || 'Gallery image'}
               className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
             />
@@ -72,7 +72,7 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
             <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground mb-3">
               <div className="flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
-                {formatDate(image.datetime)}
+                {formatDate(image.createdAt)}
               </div>
               <div className="flex items-center gap-1">
                 <Monitor className="w-3 h-3" />
@@ -82,10 +82,12 @@ export const ImageGrid: React.FC<ImageGridProps> = ({
                 <FileText className="w-3 h-3" />
                 {formatFileSize(image.size)}
               </div>
-              <div className="flex items-center gap-1">
-                <Eye className="w-3 h-3" />
-                {image.views.toLocaleString()}
-              </div>
+              {image.views !== undefined && (
+                <div className="flex items-center gap-1">
+                  <Eye className="w-3 h-3" />
+                  {image.views.toLocaleString()}
+                </div>
+              )}
             </div>
 
             {onImageDelete && (
