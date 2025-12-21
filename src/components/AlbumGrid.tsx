@@ -55,7 +55,7 @@ export const AlbumGrid: React.FC<AlbumGridProps> = ({
 
             <div className="absolute bottom-3 left-3 right-3">
               <div className="glassmorphism rounded-md px-2 py-1">
-                <div className="flex items-center gap-1 text-white text-sm font-medium">
+                <div className="flex items-center gap-1 text-black text-sm font-medium">
                   <ImageIcon className="w-3 h-3" />
                   {album.imageCount} {album.imageCount === 1 ? 'image' : 'images'}
                 </div>
