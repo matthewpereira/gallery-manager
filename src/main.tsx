@@ -6,9 +6,12 @@ import App from './App';
 import { AuthProvider } from './auth/AuthProvider';
 import { StorageProviderContext } from './contexts/StorageContext';
 
+// Set basename for GitHub Pages deployment
+const basename = import.meta.env.MODE === 'production' ? '/gallery-manager' : '/';
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <AuthProvider>
         <StorageProviderContext>
           <App />
