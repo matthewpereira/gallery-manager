@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from './auth/AuthProvider';
 import { Login } from './pages/Login';
 import { AlbumGrid } from './components/AlbumGrid';
+import { CreateAlbumModal } from './components/CreateAlbumModal';
 import AlbumView from './components/AlbumView';
 import { useStorage } from './contexts/StorageContext';
 import type { Album, AlbumDetail, Image } from './types/models';
@@ -45,6 +46,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<'albums' | 'album'>('albums');
+  const [isCreateAlbumModalOpen, setIsCreateAlbumModalOpen] = useState(false);
 
   // Fetch albums on component mount
   useEffect(() => {
@@ -96,6 +98,17 @@ function Dashboard() {
       setError('Failed to delete album. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle album creation
+  const handleCreateAlbum = async (data: { title: string; description?: string; privacy: 'public' | 'private' | 'unlisted' }) => {
+    try {
+      const newAlbum = await storage.createAlbum(data);
+      setAlbums([newAlbum, ...albums]);
+    } catch (error) {
+      console.error('Failed to create album:', error);
+      throw error; // Re-throw so the modal can handle it
     }
   };
 
@@ -255,10 +268,7 @@ function Dashboard() {
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">Your Albums</h2>
               <button
-                onClick={() => {
-                  // In a real app, you would show a modal to create a new album
-                  alert('Create new album functionality would go here');
-                }}
+                onClick={() => setIsCreateAlbumModalOpen(true)}
                 className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
               >
                 <Plus className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
@@ -281,10 +291,7 @@ function Dashboard() {
                   <button
                     type="button"
                     className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                    onClick={() => {
-                      // In a real app, you would show a modal to create a new album
-                      alert('Create new album functionality would go here');
-                    }}
+                    onClick={() => setIsCreateAlbumModalOpen(true)}
                   >
                     <Plus className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
                     New Album
@@ -307,6 +314,13 @@ function Dashboard() {
           )
         )}
       </main>
+
+      {/* Create Album Modal */}
+      <CreateAlbumModal
+        isOpen={isCreateAlbumModalOpen}
+        onClose={() => setIsCreateAlbumModalOpen(false)}
+        onSubmit={handleCreateAlbum}
+      />
     </div>
   );
 }
