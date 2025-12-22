@@ -28,6 +28,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Handle Imgur OAuth callback
   const handleImgurCallback = useCallback(async (hash: string) => {
     try {
+      console.log('[AuthProvider] Handling Imgur OAuth callback, hash:', hash);
       const params = new URLSearchParams(hash.replace('#', '?'));
       const accessToken = params.get('access_token');
       const expiresIn = params.get('expires_in');
@@ -35,6 +36,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const refreshToken = params.get('refresh_token');
       const accountUsername = params.get('account_username');
       const accountId = params.get('account_id');
+
+      console.log('[AuthProvider] Parsed Imgur OAuth params:', {
+        hasAccessToken: !!accessToken,
+        accountUsername,
+        accountId
+      });
 
       if (accessToken) {
         // Store the token in the auth service
@@ -47,18 +54,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           account_id: parseInt(accountId || '0', 10)
         });
 
-        console.log('Successfully authenticated with Imgur');
-        
-        // Remove the hash from the URL
-        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-        
-        // Refresh the page to update the UI
-        window.location.reload();
+        console.log('[AuthProvider] Successfully authenticated with Imgur, stored token');
+
+        // Remove the hash from the URL and navigate to home
+        const cleanPath = window.location.pathname + window.location.search;
+        console.log('[AuthProvider] Redirecting to:', cleanPath || '/');
+
+        // Use navigate instead of window.location to avoid full page reload
+        navigate(cleanPath || '/', { replace: true });
+
+        // Force a small delay to ensure storage is complete before reload
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
+      } else {
+        console.error('[AuthProvider] No access token found in Imgur callback');
       }
     } catch (error) {
-      console.error('Error handling Imgur OAuth callback:', error);
+      console.error('[AuthProvider] Error handling Imgur OAuth callback:', error);
     }
-  }, []);
+  }, [navigate]);
 
   // Handle the Auth0 callback after redirect
   useEffect(() => {
@@ -107,14 +122,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Check authentication status on mount and on location change
   useEffect(() => {
     const checkAuth = async () => {
+      console.log('[AuthProvider] checkAuth - URL:', window.location.href);
+      console.log('[AuthProvider] checkAuth - Hash:', window.location.hash);
+      console.log('[AuthProvider] checkAuth - Search:', window.location.search);
+
       // Skip if we're in the middle of handling an Auth0 callback
-      if (window.location.search.includes('code=') && 
+      if (window.location.search.includes('code=') &&
           window.location.search.includes('state=')) {
+        console.log('[AuthProvider] Skipping checkAuth - Auth0 callback in progress');
         return;
       }
-      
+
       // Check for Imgur OAuth callback in the URL hash
       if (window.location.hash.includes('access_token=')) {
+        console.log('[AuthProvider] Detected Imgur OAuth callback in hash');
         await handleImgurCallback(window.location.hash);
         return;
       }
