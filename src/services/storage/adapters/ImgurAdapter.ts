@@ -343,6 +343,7 @@ export class ImgurAdapter implements StorageProvider {
       description: updates.description,
       privacy: updates.privacy ? this.denormalizePrivacy(updates.privacy) : undefined,
       cover: updates.coverId,
+      ids: updates.imageIds,
     };
 
     const response = await this.requestWithRetry<ImgurApiResponse<ImgurAlbum>>({

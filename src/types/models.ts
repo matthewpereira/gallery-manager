@@ -49,6 +49,7 @@ export interface UpdateAlbumRequest {
   description?: string;
   privacy?: Privacy;
   coverId?: string;
+  imageIds?: string[];
 }
 
 export interface UploadOptions {

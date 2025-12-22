@@ -201,13 +201,26 @@ function Dashboard() {
   };
 
   // Handle image reordering
-  const handleImageReorder = (reorderedImages: Image[]) => {
+  const handleImageReorder = async (reorderedImages: Image[]) => {
+    if (!selectedAlbum) return;
+
     // Update local state immediately for a responsive UI
     setImages(reorderedImages);
 
-    // In a real app, you would make an API call to save the new order
-    console.log('Reordered images:', reorderedImages);
-    // Note: The Imgur API doesn't support reordering directly
+    try {
+      // Persist the new order to Imgur
+      const imageIds = reorderedImages.map(img => img.id);
+      await storage.updateAlbum(selectedAlbum.id, { imageIds });
+      console.log('Image order updated successfully');
+    } catch (error) {
+      console.error('Failed to update image order:', error);
+      setError('Failed to save image order. Please try again.');
+      // Revert to original order on error
+      if (selectedAlbum) {
+        const album = await storage.getAlbum(selectedAlbum.id);
+        setImages(album.images || []);
+      }
+    }
   };
 
   // Handle caption update
