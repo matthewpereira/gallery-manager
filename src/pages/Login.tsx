@@ -15,9 +15,8 @@ export const Login = () => {
           await authService.handleCallback();
           window.location.href = returnTo;
         } else {
-          // Redirect to Auth0 login
-          const redirectUri = `${window.location.origin}?returnTo=${encodeURIComponent(returnTo)}`;
-          await authService.login(redirectUri);
+          // Redirect to Auth0 login - just pass the returnTo path
+          await authService.login(returnTo);
         }
       } catch (error) {
         console.error('Login error:', error);

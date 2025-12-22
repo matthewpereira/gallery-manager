@@ -1,0 +1,26 @@
+─────┬──────────────────────────────────────────────────────────────────────────
+     │ STDIN
+─────┼──────────────────────────────────────────────────────────────────────────
+   1 │ <!DOCTYPE html>
+   2 │ <html>
+   3 │ <head><title>Env Check</title></head>
+   4 │ <body>
+   5 │ <h1>Environment Variables Check</h1>
+   6 │ <pre id="output"></pre>
+   7 │ <script>
+   8 │ const output = document.getElementById('output');
+   9 │ output.textContent = `
+  10 │ Current URL: ${window.location.href}
+  11 │ Origin: ${window.location.origin}
+  12 │ Mode: ${import.meta.env.MODE}
+  13 │ Prod: ${import.meta.env.PROD}
+  14 │ Dev: ${import.meta.env.DEV}
+  15 │ 
+  16 │ Auth0 Domain: ${import.meta.env.VITE_AUTH0_DOMAIN}
+  17 │ Auth0 Client ID: ${import.meta.env.VITE_AUTH0_CLIENT_ID}
+  18 │ Auth0 Redirect URI: ${import.meta.env.VITE_AUTH0_REDIRECT_URI}
+  19 │ `;
+  20 │ </script>
+  21 │ </body>
+  22 │ </html>
+─────┴──────────────────────────────────────────────────────────────────────────

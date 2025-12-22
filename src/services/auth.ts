@@ -43,6 +43,14 @@ class AuthService {
     // Ensure we use the environment variable for redirect URI
     const redirectUri = this.auth0RedirectUri || window.location.origin;
 
+    console.log('Auth0 Initialization:', {
+      mode: import.meta.env.MODE,
+      configuredRedirectUri: this.auth0RedirectUri,
+      windowOrigin: window.location.origin,
+      actualRedirectUri: redirectUri,
+      domain: this.auth0Domain,
+    });
+
     this.auth0Client = new Auth0Client({
       domain: this.auth0Domain,
       clientId: this.auth0ClientId,
