@@ -318,7 +318,8 @@ function Dashboard() {
             )}
             <button
               onClick={() => {
-                const redirectUri = import.meta.env.VITE_IMGUR_REDIRECT_URI || window.location.origin;
+                const redirectUri = (import.meta.env.VITE_IMGUR_REDIRECT_URI || window.location.origin).replace(/\/$/, '');
+                console.log('Imgur redirect URI:', redirectUri);
                 const authUrl = `https://api.imgur.com/oauth2/authorize?client_id=${import.meta.env.VITE_IMGUR_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}`;
                 console.log('Redirecting to Imgur OAuth:', authUrl);
                 window.location.href = authUrl;
