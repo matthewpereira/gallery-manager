@@ -40,19 +40,25 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }
 function Dashboard() {
   const { user, getToken, logout } = useAuth();
   const storage = useStorage();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [albums, setAlbums] = useState<Album[]>([]);
   const [images, setImages] = useState<Image[]>([]);
   const [selectedAlbum, setSelectedAlbum] = useState<AlbumDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<'albums' | 'album'>('albums');
   const [isCreateAlbumModalOpen, setIsCreateAlbumModalOpen] = useState(false);
   const [hasMorePages, setHasMorePages] = useState(true);
   const [totalAlbums, setTotalAlbums] = useState<number | null>(null);
 
   // Get current page from URL, default to 1 (Imgur pages are 0-indexed but we show 1-indexed)
   const currentPage = Math.max(0, parseInt(searchParams.get('page') || '1', 10) - 1);
+
+  // Determine if we're viewing an album based on the URL
+  const albumIdFromUrl = location.pathname.startsWith('/album/')
+    ? location.pathname.split('/album/')[1]
+    : null;
 
   // Fetch account info to get total album count
   useEffect(() => {
@@ -95,20 +101,36 @@ function Dashboard() {
     fetchAlbums();
   }, [currentPage, getToken, storage]);
 
-  // Handle album selection
+  // Load album when URL contains album ID
+  useEffect(() => {
+    const loadAlbum = async () => {
+      if (albumIdFromUrl) {
+        try {
+          setLoading(true);
+          const albumDetails = await storage.getAlbum(albumIdFromUrl);
+          setSelectedAlbum(albumDetails);
+          setImages(albumDetails.images || []);
+        } catch (error) {
+          console.error('Failed to load album:', error);
+          setError('Failed to load album. Please try again.');
+          // If album fails to load, redirect to home
+          navigate('/');
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        // Clear album when not viewing one
+        setSelectedAlbum(null);
+        setImages([]);
+      }
+    };
+
+    loadAlbum();
+  }, [albumIdFromUrl, storage, navigate]);
+
+  // Handle album selection - navigate to album URL
   const handleAlbumClick = async (album: Album) => {
-    try {
-      setLoading(true);
-      const albumDetails = await storage.getAlbum(album.id);
-      setSelectedAlbum(albumDetails);
-      setImages(albumDetails.images || []);
-      setView('album');
-    } catch (error) {
-      console.error('Failed to load album:', error);
-      setError('Failed to load album. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    navigate(`/album/${album.id}`);
   };
 
   // Handle album deletion
@@ -201,10 +223,9 @@ function Dashboard() {
     }
   };
 
-  // Handle back to albums view
+  // Handle back to albums view - navigate to home
   const handleBackToAlbums = () => {
-    setSelectedAlbum(null);
-    setView('albums');
+    navigate('/');
   };
 
   // Handle pagination - update URL search params
@@ -253,7 +274,7 @@ function Dashboard() {
           <div className="flex items-center space-x-4">
             <h1 className="text-xl font-bold text-gray-900">Gallery Manager</h1>
             <nav className="flex items-center space-x-4">
-              {view === 'album' && selectedAlbum && (
+              {albumIdFromUrl && selectedAlbum && (
                 <button
                   onClick={handleBackToAlbums}
                   className="flex items-center space-x-1 rounded-md px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-700"
@@ -303,7 +324,7 @@ function Dashboard() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        {view === 'albums' ? (
+        {!albumIdFromUrl ? (
           <div>
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">Your Albums</h2>
@@ -439,6 +460,14 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route
           path="/"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/album/:albumId"
           element={
             <ProtectedRoute>
               <Dashboard />
