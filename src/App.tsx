@@ -167,6 +167,9 @@ function Dashboard() {
       for (const file of files) {
         await storage.uploadImage(file, { albumId });
       }
+      // Small delay to let Imgur's servers propagate the changes
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Refresh album after upload to show new images
       if (selectedAlbum) {
         const updatedAlbum = await storage.getAlbum(albumId);
