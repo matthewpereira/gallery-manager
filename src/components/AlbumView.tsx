@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { GripVertical, Trash2 } from 'lucide-react';
 import type { AlbumDetail, Image } from '../types/models';
-import { useStorage } from '../contexts/StorageContext';
 
 interface AlbumViewProps {
   album: AlbumDetail | null;
@@ -23,7 +22,6 @@ const AlbumView: React.FC<AlbumViewProps> = ({
   onReorder,
   onUpdateCaption,
 }) => {
-  const storage = useStorage();
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [localImages, setLocalImages] = useState<Image[]>(images);
@@ -89,20 +87,20 @@ const AlbumView: React.FC<AlbumViewProps> = ({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
   // Image handlers
-  const handleDeleteImage = useCallback(async (imageId: string) => {
+  const handleDeleteImage = useCallback((imageId: string) => {
     try {
       if (!album) {
         setError('Album is not available');
         return;
       }
-      await storage.deleteImage(imageId);
+      // Let parent handle the actual deletion (it will show confirmation)
       onDeleteImage(imageId);
       setError(null);
     } catch (error) {
       setError('Failed to delete image');
       console.error('Delete failed:', error);
     }
-  }, [storage, onDeleteImage, album?.id]);
+  }, [onDeleteImage, album?.id]);
 
   const handleCaptionUpdate = useCallback((imageId: string, caption: string) => {
     try {
