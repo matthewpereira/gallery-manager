@@ -1,5 +1,5 @@
 import { Routes, Route, useLocation, Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { FolderOpen, LogOut, Image as ImageIcon, Plus, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { FolderOpen, LogOut, Image as ImageIcon, Plus, ArrowLeft, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './auth/AuthProvider';
 import { Login } from './pages/Login';
@@ -7,7 +7,10 @@ import { AlbumGrid } from './components/AlbumGrid';
 import { CreateAlbumModal } from './components/CreateAlbumModal';
 import AlbumView from './components/AlbumView';
 import { useStorage } from './contexts/StorageContext';
+import { DownloadService } from './services/download';
+import { DownloadProgressModal } from './components/DownloadProgressModal';
 import type { Album, AlbumDetail, Image } from './types/models';
+import type { DownloadProgress } from './types/download';
 
 // A wrapper component that redirects to the login page if not authenticated
 const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -51,6 +54,8 @@ function Dashboard() {
   const [isCreateAlbumModalOpen, setIsCreateAlbumModalOpen] = useState(false);
   const [hasMorePages, setHasMorePages] = useState(true);
   const [totalAlbums, setTotalAlbums] = useState<number | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+  const [downloadService] = useState(() => new DownloadService(storage));
 
   // Get current page from URL, default to 1 (Imgur pages are 0-indexed but we show 1-indexed)
   const currentPage = Math.max(0, parseInt(searchParams.get('page') || '1', 10) - 1);
@@ -244,6 +249,53 @@ function Dashboard() {
     navigate('/');
   };
 
+  // Handle album download
+  const handleAlbumDownload = async (albumId: string) => {
+    try {
+      setDownloadProgress({
+        stage: 'preparing',
+        albumsProcessed: 0,
+        totalAlbums: 0,
+        imagesProcessed: 0,
+        totalImages: 0,
+        percentage: 0,
+      });
+
+      await downloadService.downloadAlbums({
+        albumIds: [albumId],
+        includeMetadata: true,
+        progressCallback: setDownloadProgress,
+      });
+    } catch (error) {
+      console.error('Failed to download album:', error);
+    }
+  };
+
+  // Handle download all albums
+  const handleDownloadAll = async () => {
+    if (!window.confirm('This will download all your albums. Depending on the number of images, this may take a while. Continue?')) {
+      return;
+    }
+
+    try {
+      setDownloadProgress({
+        stage: 'preparing',
+        albumsProcessed: 0,
+        totalAlbums: 0,
+        imagesProcessed: 0,
+        totalImages: 0,
+        percentage: 0,
+      });
+
+      await downloadService.downloadAlbums({
+        includeMetadata: true,
+        progressCallback: setDownloadProgress,
+      });
+    } catch (error) {
+      console.error('Failed to download albums:', error);
+    }
+  };
+
   // Handle pagination - update URL search params
   const handleNextPage = () => {
     if (hasMorePages) {
@@ -345,13 +397,24 @@ function Dashboard() {
           <div>
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-lg font-medium text-gray-900">Your Albums</h2>
-              <button
-                onClick={() => setIsCreateAlbumModalOpen(true)}
-                className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-              >
-                <Plus className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
-                New Album
-              </button>
+              <div className="flex gap-2">
+                {albums.length > 0 && (
+                  <button
+                    onClick={handleDownloadAll}
+                    className="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+                  >
+                    <Download className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
+                    Download All
+                  </button>
+                )}
+                <button
+                  onClick={() => setIsCreateAlbumModalOpen(true)}
+                  className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                >
+                  <Plus className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
+                  New Album
+                </button>
+              </div>
             </div>
             
             {albums.length > 0 ? (
@@ -360,6 +423,7 @@ function Dashboard() {
                   albums={albums}
                   onAlbumClick={handleAlbumClick}
                   onAlbumDelete={handleAlbumDelete}
+                  onAlbumDownload={handleAlbumDownload}
                 />
 
                 {/* Pagination Controls */}
@@ -465,6 +529,12 @@ function Dashboard() {
         isOpen={isCreateAlbumModalOpen}
         onClose={() => setIsCreateAlbumModalOpen(false)}
         onSubmit={handleCreateAlbum}
+      />
+
+      {/* Download Progress Modal */}
+      <DownloadProgressModal
+        progress={downloadProgress}
+        onClose={() => setDownloadProgress(null)}
       />
     </div>
   );

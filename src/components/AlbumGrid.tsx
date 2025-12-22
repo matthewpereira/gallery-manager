@@ -1,17 +1,19 @@
 import React from 'react';
-import { Calendar, Eye, Lock, Users, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { Calendar, Eye, Lock, Users, Image as ImageIcon, Trash2, Download } from 'lucide-react';
 import type { Album } from '../types/models';
 
 interface AlbumGridProps {
   albums: Album[];
   onAlbumClick?: (album: Album) => void;
   onAlbumDelete?: (albumId: string) => void;
+  onAlbumDownload?: (albumId: string) => void;
 }
 
-export const AlbumGrid: React.FC<AlbumGridProps> = ({ 
-  albums, 
+export const AlbumGrid: React.FC<AlbumGridProps> = ({
+  albums,
   onAlbumClick,
-  onAlbumDelete 
+  onAlbumDelete,
+  onAlbumDownload
 }) => {
   const formatDate = (date: Date | string | number) => {
     const dateObj = date instanceof Date ? date : new Date(date);
@@ -105,7 +107,20 @@ export const AlbumGrid: React.FC<AlbumGridProps> = ({
               >
                 View Album
               </button>
-              
+
+              {onAlbumDownload && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAlbumDownload(album.id);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-md transition-colors"
+                  title="Download album"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              )}
+
               {onAlbumDelete && (
                 <button
                   onClick={(e) => {

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Imgur OAuth Test</title>
+  <style>
+    body { font-family: monospace; padding: 20px; max-width: 800px; margin: 0 auto; }
+    pre { background: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h1>Imgur OAuth Test</h1>
+
+  <h2>Configuration</h2>
+  <pre id="config"></pre>
+
+  <h2>Test OAuth Flow</h2>
+  <button id="testBtn">Test Imgur OAuth</button>
+
+  <h2>Results</h2>
+  <pre id="results"></pre>
+
+  <h2>Token (if callback successful)</h2>
+  <pre id="token"></pre>
+
+  <script>
+    const CLIENT_ID = '5df669f33464fd3';
+    const REDIRECT_URI = window.location.origin + window.location.pathname;
+
+    // Display configuration
+    document.getElementById('config').textContent = JSON.stringify({
+      client_id: CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      current_url: window.location.href,
+      hash: window.location.hash,
+      search: window.location.search
+    }, null, 2);
+
+    // Check if we're returning from Imgur
+    if (window.location.hash.includes('access_token=')) {
+      const params = new URLSearchParams(window.location.hash.replace('#', '?'));
+      const token = {
+        access_token: params.get('access_token'),
+        expires_in: params.get('expires_in'),
+        token_type: params.get('token_type'),
+        refresh_token: params.get('refresh_token'),
+        account_username: params.get('account_username'),
+        account_id: params.get('account_id')
+      };
+
+      document.getElementById('results').innerHTML = '<span class="success">✓ OAuth callback received!</span>';
+      document.getElementById('token').textContent = JSON.stringify(token, null, 2);
+
+      // Clean up URL
+      history.replaceState(null, '', window.location.pathname);
+    } else if (window.location.search.includes('error=')) {
+      const params = new URLSearchParams(window.location.search);
+      const error = {
+        error: params.get('error'),
+        error_description: params.get('error_description')
+      };
+
+      document.getElementById('results').innerHTML = '<span class="error">✗ OAuth error!</span>';
+      document.getElementById('token').textContent = JSON.stringify(error, null, 2);
+    }
+
+    // Test button handler
+    document.getElementById('testBtn').addEventListener('click', () => {
+      const authUrl = `https://api.imgur.com/oauth2/authorize?client_id=${CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+
+      document.getElementById('results').textContent = 'Redirecting to Imgur...\n\nAuth URL: ' + authUrl;
+
+      setTimeout(() => {
+        window.location.href = authUrl;
+      }, 1000);
+    });
+  </script>
+</body>
+</html>
