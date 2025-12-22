@@ -1,4 +1,4 @@
-import { Routes, Route, useLocation, Link, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { FolderOpen, LogOut, Image as ImageIcon, Plus, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './auth/AuthProvider';
@@ -40,6 +40,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }
 function Dashboard() {
   const { user, getToken, logout } = useAuth();
   const storage = useStorage();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [albums, setAlbums] = useState<Album[]>([]);
   const [images, setImages] = useState<Image[]>([]);
   const [selectedAlbum, setSelectedAlbum] = useState<AlbumDetail | null>(null);
@@ -47,8 +48,27 @@ function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<'albums' | 'album'>('albums');
   const [isCreateAlbumModalOpen, setIsCreateAlbumModalOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
   const [hasMorePages, setHasMorePages] = useState(true);
+  const [totalAlbums, setTotalAlbums] = useState<number | null>(null);
+
+  // Get current page from URL, default to 1 (Imgur pages are 0-indexed but we show 1-indexed)
+  const currentPage = Math.max(0, parseInt(searchParams.get('page') || '1', 10) - 1);
+
+  // Fetch account info to get total album count
+  useEffect(() => {
+    const fetchAccountInfo = async () => {
+      try {
+        const accountInfo = await storage.getAccountInfo();
+        if (accountInfo && typeof accountInfo.album_count === 'number') {
+          setTotalAlbums(accountInfo.album_count);
+        }
+      } catch (error) {
+        console.error('Failed to fetch account info:', error);
+      }
+    };
+
+    fetchAccountInfo();
+  }, [storage]);
 
   // Fetch albums when page changes
   useEffect(() => {
@@ -125,9 +145,10 @@ function Dashboard() {
       for (const file of files) {
         await storage.uploadImage(file, { albumId });
       }
-      // Refresh album after upload
+      // Refresh album after upload to show new images
       if (selectedAlbum) {
         const updatedAlbum = await storage.getAlbum(albumId);
+        setSelectedAlbum(updatedAlbum);
         setImages(updatedAlbum.images || []);
       }
     } catch (error) {
@@ -186,16 +207,16 @@ function Dashboard() {
     setView('albums');
   };
 
-  // Handle pagination
+  // Handle pagination - update URL search params
   const handleNextPage = () => {
     if (hasMorePages) {
-      setCurrentPage(prevPage => prevPage + 1);
+      setSearchParams({ page: String(currentPage + 2) }); // +2 because we show 1-indexed pages
     }
   };
 
   const handlePreviousPage = () => {
     if (currentPage > 0) {
-      setCurrentPage(prevPage => prevPage - 1);
+      setSearchParams({ page: String(currentPage) }); // currentPage is already decremented by 1
     }
   };
 
@@ -325,8 +346,20 @@ function Dashboard() {
                     <div>
                       <p className="text-sm text-gray-700">
                         Page <span className="font-medium">{currentPage + 1}</span>
+                        {totalAlbums !== null && (
+                          <>
+                            {' of '}
+                            <span className="font-medium">{Math.ceil(totalAlbums / 50)}</span>
+                          </>
+                        )}
                         {' · '}
                         <span className="font-medium">{albums.length}</span> albums on this page
+                        {totalAlbums !== null && (
+                          <>
+                            {' · '}
+                            <span className="font-medium">{totalAlbums}</span> total
+                          </>
+                        )}
                       </p>
                     </div>
                     <div>
@@ -341,6 +374,7 @@ function Dashboard() {
                         </button>
                         <span className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300">
                           {currentPage + 1}
+                          {totalAlbums !== null && ` / ${Math.ceil(totalAlbums / 50)}`}
                         </span>
                         <button
                           onClick={handleNextPage}

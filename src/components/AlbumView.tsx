@@ -26,6 +26,12 @@ const AlbumView: React.FC<AlbumViewProps> = ({
   const storage = useStorage();
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [localImages, setLocalImages] = useState<Image[]>(images);
+
+  // Update local images when props change
+  useEffect(() => {
+    setLocalImages(images);
+  }, [images]);
 
   useEffect(() => {
     return () => {
@@ -35,25 +41,36 @@ const AlbumView: React.FC<AlbumViewProps> = ({
 
   // Drag and drop handlers for reordering
   const handleDragStart = (idx: number) => setDraggedIdx(idx);
+
   const handleDragOver = (idx: number) => {
     if (draggedIdx === null || draggedIdx === idx) return;
-    const reordered = [...images];
+    const reordered = [...localImages];
     const [removed] = reordered.splice(draggedIdx, 1);
     reordered.splice(idx, 0, removed);
     setDraggedIdx(idx);
-    try {
-      if (!album) {
-        setError('Album is not available');
-        return;
-      }
-      onReorder(reordered);
-      setError(null);
-    } catch (error) {
-      setError('Failed to reorder images');
-      console.error('Reorder failed:', error);
-    }
+    // Update local state immediately for visual feedback
+    setLocalImages(reordered);
   };
-  const handleDragEnd = () => setDraggedIdx(null);
+
+  const handleDragEnd = () => {
+    if (draggedIdx !== null) {
+      // Only call onReorder when user releases the mouse
+      try {
+        if (!album) {
+          setError('Album is not available');
+          return;
+        }
+        onReorder(localImages);
+        setError(null);
+      } catch (error) {
+        setError('Failed to reorder images');
+        console.error('Reorder failed:', error);
+        // Revert to original order on error
+        setLocalImages(images);
+      }
+    }
+    setDraggedIdx(null);
+  };
 
   // Dropzone for uploading
   const onDrop = useCallback((acceptedFiles: File[]) => {
@@ -129,7 +146,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
 
       {/* Images grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {images.map((img, idx) => (
+        {localImages.map((img, idx) => (
           <div
             key={img.id}
             className="bg-card border rounded-lg p-2 flex flex-col relative group"
