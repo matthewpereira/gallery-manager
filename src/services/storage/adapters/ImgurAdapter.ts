@@ -310,13 +310,26 @@ export class ImgurAdapter implements StorageProvider {
     );
   }
 
-  async getAlbum(id: string): Promise<AlbumDetail> {
+  async getAlbum(id: string, options?: { imageLimit?: number; imageOffset?: number }): Promise<AlbumDetail> {
     const response = await this.requestWithRetry<ImgurApiResponse<ImgurAlbum>>({
       method: 'GET',
       url: `/album/${id}`
     });
 
-    return this.normalizeAlbumDetail(response.data);
+    const albumDetail = this.normalizeAlbumDetail(response.data);
+
+    // Apply pagination if requested
+    if (options?.imageLimit !== undefined || options?.imageOffset !== undefined) {
+      const offset = options.imageOffset ?? 0;
+      const limit = options.imageLimit;
+      albumDetail.images = limit !== undefined
+        ? albumDetail.images.slice(offset, offset + limit)
+        : albumDetail.images.slice(offset);
+
+      console.log(`[ImgurAdapter] Loaded album ${id}: ${albumDetail.images.length} images (offset: ${offset}, total: ${response.data.images?.length || 0})`);
+    }
+
+    return albumDetail;
   }
 
   async createAlbum(data: CreateAlbumRequest): Promise<Album> {

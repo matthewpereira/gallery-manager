@@ -37,32 +37,54 @@ class AuthService {
     }
   }
 
+  private initPromise: Promise<void> | null = null;
+
   private async initializeAuth0() {
-    if (this.isAuth0Initialized) return;
+    // If already initialized, return immediately
+    if (this.isAuth0Initialized && this.auth0Client) {
+      return;
+    }
 
-    // Ensure we use the environment variable for redirect URI
-    const redirectUri = this.auth0RedirectUri || window.location.origin;
+    // If initialization is in progress, wait for it
+    if (this.initPromise) {
+      await this.initPromise;
+      return;
+    }
 
-    console.log('Auth0 Initialization:', {
-      mode: import.meta.env.MODE,
-      configuredRedirectUri: this.auth0RedirectUri,
-      windowOrigin: window.location.origin,
-      actualRedirectUri: redirectUri,
-      domain: this.auth0Domain,
-    });
+    // Start initialization
+    this.initPromise = (async () => {
+      // Double-check in case another call won the race
+      if (this.isAuth0Initialized && this.auth0Client) {
+        return;
+      }
 
-    this.auth0Client = new Auth0Client({
-      domain: this.auth0Domain,
-      clientId: this.auth0ClientId,
-      authorizationParams: {
-        redirect_uri: redirectUri,
-        audience: this.auth0Audience,
-      },
-      cacheLocation: 'localstorage',
-      useRefreshTokens: true,
-    });
+      // Ensure we use the environment variable for redirect URI
+      const redirectUri = this.auth0RedirectUri || window.location.origin;
 
-    this.isAuth0Initialized = true;
+      console.log('Auth0 Initialization:', {
+        mode: import.meta.env.MODE,
+        configuredRedirectUri: this.auth0RedirectUri,
+        windowOrigin: window.location.origin,
+        actualRedirectUri: redirectUri,
+        domain: this.auth0Domain,
+      });
+
+      this.auth0Client = new Auth0Client({
+        domain: this.auth0Domain,
+        clientId: this.auth0ClientId,
+        authorizationParams: {
+          redirect_uri: redirectUri,
+          audience: this.auth0Audience,
+        },
+        cacheLocation: 'memory',
+        useRefreshTokens: true,
+      });
+
+      this.isAuth0Initialized = true;
+    })();
+
+    await this.initPromise;
+    this.initPromise = null;
   }
 
   /**

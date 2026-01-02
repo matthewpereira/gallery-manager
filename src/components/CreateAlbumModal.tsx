@@ -5,7 +5,7 @@ import type { Privacy } from '../types/models';
 interface CreateAlbumModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { title: string; description?: string; privacy: Privacy }) => Promise<void>;
+  onSubmit: (data: { title: string; description?: string; privacy: Privacy; customId?: string }) => Promise<void>;
 }
 
 export const CreateAlbumModal: React.FC<CreateAlbumModalProps> = ({
@@ -16,7 +16,32 @@ export const CreateAlbumModal: React.FC<CreateAlbumModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [privacy, setPrivacy] = useState<Privacy>('public');
+  const [customId, setCustomId] = useState('');
+  const [customIdError, setCustomIdError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const validateCustomId = (id: string): string => {
+    if (!id) return ''; // Empty is valid (optional field)
+
+    if (id.length < 3) {
+      return 'Custom ID must be at least 3 characters';
+    }
+
+    if (id.length > 20) {
+      return 'Custom ID must be no more than 20 characters';
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(id)) {
+      return 'Custom ID can only contain letters, numbers, and underscores';
+    }
+
+    return '';
+  };
+
+  const handleCustomIdChange = (value: string) => {
+    setCustomId(value);
+    setCustomIdError(validateCustomId(value));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,18 +50,30 @@ export const CreateAlbumModal: React.FC<CreateAlbumModalProps> = ({
       return;
     }
 
+    // Validate custom ID if provided
+    if (customId) {
+      const error = validateCustomId(customId);
+      if (error) {
+        setCustomIdError(error);
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       await onSubmit({
         title: title.trim(),
         description: description.trim() || undefined,
         privacy,
+        customId: customId.trim() || undefined,
       });
 
       // Reset form
       setTitle('');
       setDescription('');
       setPrivacy('public');
+      setCustomId('');
+      setCustomIdError('');
       onClose();
     } catch (error) {
       console.error('Failed to create album:', error);
@@ -111,6 +148,36 @@ export const CreateAlbumModal: React.FC<CreateAlbumModalProps> = ({
                 placeholder="Optional description"
                 disabled={isSubmitting}
               />
+            </div>
+
+            {/* Custom Album ID */}
+            <div>
+              <label
+                htmlFor="customId"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Custom Album ID
+              </label>
+              <input
+                type="text"
+                id="customId"
+                value={customId}
+                onChange={(e) => handleCustomIdChange(e.target.value)}
+                className={`mt-1 block w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none sm:text-sm ${
+                  customIdError
+                    ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
+                    : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+                }`}
+                placeholder="e.g., 6Hpyr"
+                disabled={isSubmitting}
+              />
+              {customIdError ? (
+                <p className="mt-1 text-xs text-red-600">{customIdError}</p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-500">
+                  Optional: Use a custom ID (e.g., imgur album ID) or leave blank for auto-generated ID
+                </p>
+              )}
             </div>
 
             {/* Privacy */}

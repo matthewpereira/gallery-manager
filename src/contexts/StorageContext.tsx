@@ -5,9 +5,10 @@
  * Allows components to access storage functionality without directly importing specific providers
  */
 
-import { createContext, useContext, useMemo, type PropsWithChildren } from 'react';
+import { createContext, useContext, useMemo, useEffect, type PropsWithChildren } from 'react';
 import type { StorageProvider } from '../services/storage/StorageProvider';
 import { createStorageProvider, getProviderTypeFromEnv } from '../services/storage/ProviderFactory';
+import { useAuth } from '../auth/AuthProvider';
 
 interface StorageContextValue {
   provider: StorageProvider;
@@ -21,6 +22,8 @@ const StorageContext = createContext<StorageContextValue | null>(null);
  * Wraps the application and provides storage provider access to all components
  */
 export function StorageProviderContext({ children }: PropsWithChildren) {
+  const { user } = useAuth();
+
   const value = useMemo(() => {
     const providerType = getProviderTypeFromEnv();
     const provider = createStorageProvider(providerType);
@@ -32,6 +35,14 @@ export function StorageProviderContext({ children }: PropsWithChildren) {
       providerName: provider.name
     };
   }, []);
+
+  // Set authentication status for R2 when user logs in/out
+  useEffect(() => {
+    if (value.providerName === 'r2' && 'setAuthenticated' in value.provider) {
+      (value.provider as any).setAuthenticated(!!user);
+      console.log(`[StorageContext] Set R2 authentication status: ${!!user}`);
+    }
+  }, [user, value.provider, value.providerName]);
 
   return (
     <StorageContext.Provider value={value}>

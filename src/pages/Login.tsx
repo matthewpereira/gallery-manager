@@ -9,19 +9,15 @@ export const Login = () => {
   useEffect(() => {
     const loginWithAuth0 = async () => {
       try {
-        // Check if we're in the callback from Auth0
-        if (window.location.search.includes('code=')) {
-          // Handle the callback from Auth0
-          await authService.handleCallback();
-          window.location.href = returnTo;
-        } else {
+        // Don't handle callbacks here - AuthProvider handles all callbacks
+        // Just initiate login if we're not in a callback flow
+        if (!window.location.search.includes('code=')) {
           // Redirect to Auth0 login - just pass the returnTo path
           await authService.login(returnTo);
         }
+        // If we have code=, do nothing - AuthProvider will handle it
       } catch (error) {
         console.error('Login error:', error);
-        // Redirect to home on error
-        window.location.href = '/';
       }
     };
 

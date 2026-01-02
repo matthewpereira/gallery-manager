@@ -1,23 +1,258 @@
-import React from 'react';
-import { Calendar, Eye, Lock, Users, Image as ImageIcon, Trash2, Download } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Image as ImageIcon, Trash2, Download, Link, Calendar, Upload, Check } from 'lucide-react';
 import type { Album } from '../types/models';
+import { useStorage } from '../contexts/StorageContext';
 
 interface AlbumGridProps {
   albums: Album[];
   onAlbumClick?: (album: Album) => void;
   onAlbumDelete?: (albumId: string) => void;
   onAlbumDownload?: (albumId: string) => void;
+  albumsInProgress?: Set<string>;
 }
+
+// Global cache for loaded cover URLs (shared across all album cards)
+const coverUrlCache = new Map<string, string>();
+// Global set to track which albums we've attempted to load (prevents duplicate requests)
+const loadAttemptedSet = new Set<string>();
+// Global set to track which albums are currently loading (prevents concurrent requests)
+const currentlyLoadingSet = new Set<string>();
+
+/**
+ * AlbumCard - Individual album card with lazy-loaded cover image
+ */
+const AlbumCard: React.FC<{
+  album: Album;
+  isInProgress: boolean;
+  isCopied: boolean;
+  onAlbumClick?: (album: Album) => void;
+  onAlbumDelete?: (albumId: string) => void;
+  onAlbumDownload?: (albumId: string) => void;
+  onCopyLink: (album: Album, e: React.MouseEvent) => void;
+}> = ({ album, isInProgress, isCopied, onAlbumClick, onAlbumDelete, onAlbumDownload, onCopyLink }) => {
+  const storage = useStorage();
+  const [coverUrl, setCoverUrl] = useState<string | undefined>(() => {
+    // Check cache first, then album data
+    return coverUrlCache.get(album.id) || album.coverImageUrl;
+  });
+  const [isLoading, setIsLoading] = useState(!coverUrl && !loadAttemptedSet.has(album.id));
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  // Lazy load cover image when card becomes visible
+  useEffect(() => {
+    // If we already have a cover URL, no need to load
+    if (coverUrl) {
+      setIsLoading(false);
+      return;
+    }
+
+    // If we already attempted to load, don't try again
+    if (loadAttemptedSet.has(album.id)) {
+      setIsLoading(false);
+      return;
+    }
+
+    // If album has no cover image ID, nothing to load
+    if (!album.metadata?.coverImageId) {
+      setIsLoading(false);
+      loadAttemptedSet.add(album.id);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      async (entries) => {
+        const [entry] = entries;
+
+        // Only proceed if:
+        // 1. Element is intersecting
+        // 2. We don't have the URL yet
+        // 3. We haven't attempted to load
+        // 4. We're not currently loading it
+        if (entry.isIntersecting &&
+            !coverUrlCache.has(album.id) &&
+            !loadAttemptedSet.has(album.id) &&
+            !currentlyLoadingSet.has(album.id)) {
+
+          // Mark as loading and attempted
+          loadAttemptedSet.add(album.id);
+          currentlyLoadingSet.add(album.id);
+
+          try {
+            // Load the album with just the cover image
+            const albumDetails = await storage.getAlbum(album.id, { imageLimit: 1 });
+            if (albumDetails.coverImageUrl) {
+              setCoverUrl(albumDetails.coverImageUrl);
+              // Cache the URL so we don't refetch it
+              coverUrlCache.set(album.id, albumDetails.coverImageUrl);
+            }
+          } catch (error) {
+            console.error(`Failed to load cover for album ${album.id}:`, error);
+          } finally {
+            setIsLoading(false);
+            currentlyLoadingSet.delete(album.id);
+          }
+        }
+      },
+      {
+        rootMargin: '50px', // Start loading 50px before the card enters viewport
+        threshold: 0.01,
+      }
+    );
+
+    if (cardRef.current) {
+      observer.observe(cardRef.current);
+    }
+
+    return () => {
+      if (cardRef.current) {
+        observer.unobserve(cardRef.current);
+      }
+    };
+  }, [album.id, album.metadata?.coverImageId, coverUrl, storage]);
+
+  const formatDate = (date: Date | string | number) => {
+    const dateObj = date instanceof Date ? date : new Date(date);
+    return dateObj.toLocaleDateString();
+  };
+
+  return (
+    <div
+      ref={cardRef}
+      className={`group animate-slide-up ${isInProgress ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}`}
+      onClick={() => !isInProgress && onAlbumClick?.(album)}
+    >
+      {/* Image */}
+      <div className="relative overflow-hidden rounded-2xl mb-3 bg-gray-100">
+        {isLoading ? (
+          <div className="w-full aspect-[4/3] flex items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-gray-400"></div>
+          </div>
+        ) : coverUrl ? (
+          <img
+            src={coverUrl}
+            alt={album.title || 'Album cover'}
+            className="w-full aspect-[4/3] object-cover transition-transform duration-500 group-hover:scale-105"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full aspect-[4/3] flex items-center justify-center">
+            <ImageIcon className="w-12 h-12 text-gray-300" />
+          </div>
+        )}
+
+        {/* Loading overlay for albums in progress */}
+        {isInProgress && (
+          <div className="absolute inset-0 bg-white/75 backdrop-blur-sm flex items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900"></div>
+              <span className="text-sm font-medium text-gray-700">Processing...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Action buttons overlay */}
+        <div className={`absolute bottom-3 right-3 flex gap-2 transition-opacity ${isInProgress ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100'}`}>
+          {/* Copy Link Button */}
+          <button
+            onClick={(e) => onCopyLink(album, e)}
+            className="bg-white/90 backdrop-blur-sm hover:bg-white p-2.5 rounded-xl transition-all shadow-lg"
+            title={isCopied ? 'Link copied!' : 'Copy link'}
+          >
+            {isCopied ? (
+              <Check className="w-4 h-4 text-green-600" />
+            ) : (
+              <Link className="w-4 h-4 text-gray-700" />
+            )}
+          </button>
+
+          {onAlbumDownload && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAlbumDownload(album.id);
+              }}
+              className="bg-white/90 backdrop-blur-sm hover:bg-white p-2.5 rounded-xl transition-all shadow-lg"
+              title="Download album"
+            >
+              <Download className="w-4 h-4 text-gray-700" />
+            </button>
+          )}
+
+          {onAlbumDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onAlbumDelete(album.id);
+              }}
+              className="bg-white/90 backdrop-blur-sm hover:bg-white p-2.5 rounded-xl transition-all shadow-lg"
+              title="Delete album"
+            >
+              <Trash2 className="w-4 h-4 text-red-600" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Hover-revealed metadata */}
+      <div className="relative z-40">
+        <div className="z-40 transition-all duration-300 ease-in-out h-0 -t-50 opacity-0 group-hover:opacity-100">
+          <div className="bg-white relative top-1 space-y-2 min-h-16">
+            {/* Uploaded Date */}
+            <div className="flex items-center gap-2 text-xs text-gray-600">
+              <Upload className="w-3 h-3" />
+              <span className="font-medium">Uploaded:</span>
+              <span>{formatDate(album.createdAt)}</span>
+            </div>
+
+            {/* Image Count */}
+            <div className="flex items-center gap-2 text-xs text-gray-600">
+              <ImageIcon className="w-3 h-3" />
+              <span className="font-medium">Images:</span>
+              <span>{album.imageCount} {album.imageCount === 1 ? 'image' : 'images'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content - Title and Date (always visible) */}
+      <div className="space-y-1">
+        <h3 className="font-medium text-lg text-gray-900 line-clamp-2 leading-snug group-hover:text-gray-600 transition-colors">
+          {album.title || 'Untitled Album'}
+        </h3>
+
+        {/* Album Date (if set) */}
+        {album.date && (
+          <div className="flex items-center gap-1.5 text-sm text-gray-600">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{formatDate(album.date)}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export const AlbumGrid: React.FC<AlbumGridProps> = ({
   albums,
   onAlbumClick,
   onAlbumDelete,
-  onAlbumDownload
+  onAlbumDownload,
+  albumsInProgress = new Set()
 }) => {
-  const formatDate = (date: Date | string | number) => {
-    const dateObj = date instanceof Date ? date : new Date(date);
-    return dateObj.toLocaleDateString();
+  const [copiedAlbumId, setCopiedAlbumId] = useState<string | null>(null);
+
+  const handleCopyLink = (album: Album, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Use imgurId if available (for legacy support), otherwise use the album ID
+    const shortcode = album.imgurId || album.id;
+    const url = `https://matthewpereira.com/a/${shortcode}`;
+
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedAlbumId(album.id);
+      setTimeout(() => setCopiedAlbumId(null), 2000);
+    }).catch(err => {
+      console.error('Failed to copy link:', err);
+    });
   };
 
   if (albums.length === 0) {
@@ -33,110 +268,24 @@ export const AlbumGrid: React.FC<AlbumGridProps> = ({
   }
 
   return (
-    <div className="grid-gallery animate-fade-in">
-      {albums.map((album) => (
-        <div key={album.id} className="bg-card border border-border rounded-lg overflow-hidden card-hover animate-slide-up">
-          <div
-            className="relative cursor-pointer group"
-            onClick={() => onAlbumClick?.(album)}
-          >
-            {album.coverImageUrl ? (
-              <img
-                src={album.coverImageUrl.replace('.jpg', 'm.jpg')}
-                alt={album.title || 'Album cover'}
-                className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                loading="lazy"
-              />
-            ) : (
-              <div className="w-full h-48 bg-muted flex items-center justify-center">
-                <ImageIcon className="w-12 h-12 text-muted-foreground" />
-              </div>
-            )}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 animate-fade-in">
+      {albums.map((album) => {
+        const isInProgress = albumsInProgress.has(album.id);
+        const isCopied = copiedAlbumId === album.id;
 
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-
-            <div className="absolute bottom-3 left-3 right-3">
-              <div className="glassmorphism rounded-md px-2 py-1">
-                <div className="flex items-center gap-1 text-black text-sm font-medium">
-                  <ImageIcon className="w-3 h-3" />
-                  {album.imageCount} {album.imageCount === 1 ? 'image' : 'images'}
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="p-4">
-            <h3 className="font-semibold text-lg mb-2 text-card-foreground line-clamp-2">
-              {album.title || 'Untitled Album'}
-            </h3>
-            
-            {album.description && (
-              <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-                {album.description}
-              </p>
-            )}
-            
-            <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-4">
-              <div className="flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
-                {formatDate(album.createdAt)}
-              </div>
-              {album.views !== undefined && (
-                <div className="flex items-center gap-1">
-                  <Eye className="w-3 h-3" />
-                  {album.views.toLocaleString()}
-                </div>
-              )}
-              <div className="flex items-center gap-1">
-                {album.privacy === 'public' ? (
-                  <Users className="w-3 h-3 text-green-600" />
-                ) : (
-                  <Lock className="w-3 h-3 text-amber-600" />
-                )}
-                <span className="capitalize">{album.privacy}</span>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAlbumClick?.(album);
-                }}
-                className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground text-sm py-2 px-3 rounded-md transition-colors"
-              >
-                View Album
-              </button>
-
-              {onAlbumDownload && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAlbumDownload(album.id);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-md transition-colors"
-                  title="Download album"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-              )}
-
-              {onAlbumDelete && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAlbumDelete(album.id);
-                  }}
-                  className="bg-destructive hover:bg-destructive/90 text-destructive-foreground p-2 rounded-md transition-colors"
-                  title="Delete album"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      ))}
+        return (
+          <AlbumCard
+            key={album.id}
+            album={album}
+            isInProgress={isInProgress}
+            isCopied={isCopied}
+            onAlbumClick={onAlbumClick}
+            onAlbumDelete={onAlbumDelete}
+            onAlbumDownload={onAlbumDownload}
+            onCopyLink={handleCopyLink}
+          />
+        );
+      })}
     </div>
   );
 };

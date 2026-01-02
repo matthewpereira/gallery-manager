@@ -34,9 +34,12 @@ export interface StorageProvider {
   /**
    * Get detailed information about a specific album including its images
    * @param id - The album ID
+   * @param options - Optional parameters for image loading
+   * @param options.imageLimit - Maximum number of images to load (undefined = all)
+   * @param options.imageOffset - Number of images to skip (for pagination)
    * @returns Promise resolving to album details with images
    */
-  getAlbum(id: string): Promise<AlbumDetail>;
+  getAlbum(id: string, options?: { imageLimit?: number; imageOffset?: number }): Promise<AlbumDetail>;
 
   /**
    * Create a new album
@@ -59,6 +62,23 @@ export interface StorageProvider {
    * @returns Promise resolving to true if successful
    */
   deleteAlbum(id: string): Promise<boolean>;
+
+  /**
+   * Rename an album (change its ID)
+   * @param oldId - The current album ID
+   * @param newId - The new album ID
+   * @param onProgress - Optional callback for progress updates
+   * @returns Promise resolving to the renamed album
+   */
+  renameAlbum?(oldId: string, newId: string, onProgress?: (status: string, percent: number) => void): Promise<Album>;
+
+  /**
+   * Resolve an Imgur album ID to the current album ID
+   * Used for legacy bookmark support (e.g., ?shortcode or /a/shortcode)
+   * @param imgurId - The original Imgur album ID
+   * @returns Promise resolving to the current album ID, or null if not found
+   */
+  resolveImgurId?(imgurId: string): Promise<string | null>;
 
   // Image operations
 

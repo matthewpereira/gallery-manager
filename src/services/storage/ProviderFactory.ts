@@ -6,8 +6,9 @@
 
 import type { StorageProvider } from './StorageProvider';
 import { ImgurAdapter } from './adapters/ImgurAdapter';
+import { R2Adapter } from './adapters/R2Adapter';
 
-export type ProviderType = 'imgur' | 's3' | 'gdrive';
+export type ProviderType = 'imgur' | 'r2' | 's3' | 'gdrive';
 
 /**
  * Create a storage provider instance based on the provider type
@@ -18,6 +19,9 @@ export function createStorageProvider(type: ProviderType = 'imgur'): StorageProv
   switch (type) {
     case 'imgur':
       return new ImgurAdapter();
+
+    case 'r2':
+      return new R2Adapter();
 
     case 's3':
       // Future implementation
@@ -45,7 +49,7 @@ export function getProviderTypeFromEnv(): ProviderType {
 
   const normalized = envProvider.toLowerCase();
 
-  if (normalized === 'imgur' || normalized === 's3' || normalized === 'gdrive') {
+  if (normalized === 'imgur' || normalized === 'r2' || normalized === 's3' || normalized === 'gdrive') {
     return normalized as ProviderType;
   }
 

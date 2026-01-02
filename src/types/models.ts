@@ -12,6 +12,8 @@ export interface Album {
   coverImageUrl?: string;
   imageCount: number;
   createdAt: Date;
+  date?: Date; // Optional calendar date for the album (e.g., when photos were taken)
+  imgurId?: string; // Original Imgur album ID for legacy bookmark support
   privacy: Privacy;
   views?: number;
   metadata?: Record<string, any>; // Provider-specific data
@@ -42,6 +44,7 @@ export interface CreateAlbumRequest {
   description?: string;
   privacy?: Privacy;
   coverId?: string;
+  customId?: string;
 }
 
 export interface UpdateAlbumRequest {
@@ -50,6 +53,7 @@ export interface UpdateAlbumRequest {
   privacy?: Privacy;
   coverId?: string;
   imageIds?: string[];
+  date?: Date | null; // Optional calendar date (null to clear)
 }
 
 export interface UploadOptions {

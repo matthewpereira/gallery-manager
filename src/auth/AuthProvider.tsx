@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authService } from '../services/auth';
 
@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<any>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const callbackProcessedRef = useRef(false);
 
   // Handle Imgur OAuth callback
   const handleImgurCallback = useCallback(async (hash: string) => {
@@ -56,17 +57,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
         console.log('[AuthProvider] Successfully authenticated with Imgur, stored token');
 
-        // Remove the hash from the URL and navigate to home
+        // Update auth state directly without reload
+        setIsAuthenticated(true);
+
+        // Clean the hash from URL by navigating without it
         const cleanPath = window.location.pathname + window.location.search;
-        console.log('[AuthProvider] Redirecting to:', cleanPath || '/');
-
-        // Use navigate instead of window.location to avoid full page reload
+        console.log('[AuthProvider] Cleaning URL, navigating to:', cleanPath || '/');
         navigate(cleanPath || '/', { replace: true });
-
-        // Force a small delay to ensure storage is complete before reload
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
       } else {
         console.error('[AuthProvider] No access token found in Imgur callback');
       }
@@ -75,128 +72,96 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, [navigate]);
 
-  // Handle the Auth0 callback after redirect
+  // Combined auth check: handles callbacks and initial auth state
   useEffect(() => {
-    const handleAuthCallback = async () => {
-      // Check if this is a callback from Auth0
-      if (window.location.search.includes('code=') && 
+    const initAuth = async () => {
+      console.log('[AuthProvider] initAuth - URL:', window.location.href);
+
+      // Priority 1: Check if this is an Auth0 callback
+      if (window.location.search.includes('code=') &&
           window.location.search.includes('state=')) {
+
+        // Prevent duplicate processing in StrictMode
+        if (callbackProcessedRef.current) {
+          console.log('[AuthProvider] Skipping duplicate Auth0 callback processing');
+          return;
+        }
+        callbackProcessedRef.current = true;
+
         try {
+          console.log('[AuthProvider] Processing Auth0 callback');
           setIsLoading(true);
-          
+
           // Handle the Auth0 callback and get the returnTo URL
           const { user: userProfile, returnTo } = await authService.handleCallback();
-          
+
           // Update the user state
           setUser(userProfile);
           setIsAuthenticated(true);
-          
-          // Navigate to the returnTo URL if it's different from the current path
-          if (returnTo && returnTo !== window.location.pathname) {
+
+          // Always navigate to clean up the URL (removes code/state params)
+          if (returnTo && returnTo !== '/') {
             try {
               // Ensure returnTo is a valid path on our domain
               const url = new URL(returnTo, window.location.origin);
               if (url.origin === window.location.origin) {
+                console.log('[AuthProvider] Navigating to returnTo:', url.pathname + url.search);
                 navigate(url.pathname + url.search, { replace: true });
               } else {
+                console.log('[AuthProvider] Invalid origin, navigating to home');
                 navigate('/', { replace: true });
               }
             } catch (e) {
               console.error('Invalid returnTo URL, redirecting to home:', e);
               navigate('/', { replace: true });
             }
+          } else {
+            // No returnTo or returnTo is root - navigate to root to clean URL
+            console.log('[AuthProvider] No returnTo, navigating to home');
+            navigate('/', { replace: true });
           }
         } catch (error) {
           console.error('Error handling Auth0 callback:', error);
           setIsAuthenticated(false);
+          setIsLoading(false);
           navigate('/login', { replace: true });
         } finally {
           setIsLoading(false);
         }
-      }
-    };
-    
-    handleAuthCallback();
-  }, [navigate]);
-  
-  // Check authentication status on mount and on location change
-  useEffect(() => {
-    const checkAuth = async () => {
-      console.log('[AuthProvider] checkAuth - URL:', window.location.href);
-      console.log('[AuthProvider] checkAuth - Hash:', window.location.hash);
-      console.log('[AuthProvider] checkAuth - Search:', window.location.search);
-
-      // Skip if we're in the middle of handling an Auth0 callback
-      if (window.location.search.includes('code=') &&
-          window.location.search.includes('state=')) {
-        console.log('[AuthProvider] Skipping checkAuth - Auth0 callback in progress');
-        return;
+        return; // Exit early after handling callback
       }
 
-      // Check for Imgur OAuth callback in the URL hash
+      // Priority 2: Check for Imgur OAuth callback in the URL hash
       if (window.location.hash.includes('access_token=')) {
-        console.log('[AuthProvider] Detected Imgur OAuth callback in hash');
+        console.log('[AuthProvider] Processing Imgur OAuth callback');
         await handleImgurCallback(window.location.hash);
-        return;
+        setIsLoading(false);
+        return; // Exit early after handling callback
       }
 
+      // Priority 3: Normal auth check (not a callback)
       try {
+        console.log('[AuthProvider] Checking authentication status');
         const isAuth = await authService.isAuthenticated();
         setIsAuthenticated(isAuth);
-        
+
         if (isAuth) {
           const userProfile = await authService.getUserProfile();
           setUser(userProfile);
-          
-          // Only process returnTo if we're not already on the target page
-          const params = new URLSearchParams(location.search);
-          const returnTo = params.get('returnTo');
-          
-          if (returnTo && returnTo !== location.pathname) {
-            try {
-              const url = new URL(returnTo, window.location.origin);
-              if (url.origin === window.location.origin) {
-                // Remove the returnTo parameter to prevent loops
-                params.delete('returnTo');
-                const newSearch = params.toString();
-                const returnPath = url.pathname + (newSearch ? `?${newSearch}` : '');
-                
-                if (returnPath !== location.pathname + location.search) {
-                  navigate(returnPath, { replace: true });
-                }
-              }
-            } catch (e) {
-              console.error('Invalid returnTo URL:', returnTo);
-            }
-          }
-        } else if (!['/login', '/callback', '/'].includes(location.pathname)) {
-          // Only redirect to login if not already on login, callback, or home page
-          const returnTo = location.pathname + location.search;
-          if (returnTo !== '/login' && returnTo !== window.location.pathname + window.location.search) {
-            navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`, { replace: true });
-          }
+          console.log('[AuthProvider] User authenticated:', userProfile?.email);
+        } else {
+          console.log('[AuthProvider] User not authenticated');
         }
       } catch (error) {
         console.error('Error checking authentication status:', error);
         setIsAuthenticated(false);
-        
-        // If there's an error, redirect to login
-        if (!['/login', '/callback'].includes(location.pathname)) {
-          const returnTo = location.pathname + location.search;
-          navigate(`/login?returnTo=${encodeURIComponent(returnTo)}`);
-        }
       } finally {
         setIsLoading(false);
       }
     };
 
-    checkAuth();
-    
-    // Set up an interval to check authentication status periodically
-    const intervalId = setInterval(checkAuth, 60000); // Check every minute
-    
-    return () => clearInterval(intervalId);
-  }, [location, navigate]);
+    initAuth();
+  }, [navigate, handleImgurCallback]); // Only run on mount
 
   const login = async (returnToPath?: string) => {
     try {
