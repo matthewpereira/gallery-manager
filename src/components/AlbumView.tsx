@@ -38,6 +38,8 @@ const AlbumView: React.FC<AlbumViewProps> = ({
   const [albumDate, setAlbumDate] = useState<string>('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [albumTitle, setAlbumTitle] = useState<string>('');
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [albumDescription, setAlbumDescription] = useState<string>('');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // Lazy loading state
@@ -55,6 +57,11 @@ const AlbumView: React.FC<AlbumViewProps> = ({
       setAlbumTitle(album.title);
     }
   }, [album?.title]);
+
+  // Initialize album description when album changes
+  useEffect(() => {
+    setAlbumDescription(album?.description || '');
+  }, [album?.description]);
 
   // Initialize album date when album changes
   useEffect(() => {
@@ -445,6 +452,38 @@ const AlbumView: React.FC<AlbumViewProps> = ({
     }
   };
 
+  // Description editing handlers
+  const handleEditDescription = () => {
+    setIsEditingDescription(true);
+  };
+
+  const handleSaveDescription = async () => {
+    if (!album || !onUpdateAlbum) return;
+
+    const trimmedDescription = albumDescription.trim();
+
+    if (trimmedDescription === (album.description || '')) {
+      setIsEditingDescription(false);
+      return;
+    }
+
+    try {
+      setError(null);
+      await onUpdateAlbum(album.id, { description: trimmedDescription || undefined });
+      setIsEditingDescription(false);
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to update album description';
+      setError(errorMessage);
+      console.error('Description update failed:', error);
+    }
+  };
+
+  const handleCancelDescriptionEdit = () => {
+    setIsEditingDescription(false);
+    // Reset to original description
+    setAlbumDescription(album?.description || '');
+  };
+
   return (
     <div className="p-6 relative">
       {error && (
@@ -501,8 +540,54 @@ const AlbumView: React.FC<AlbumViewProps> = ({
           </div>
         )}
 
-        {album?.description && (
-          <p className="mb-4 text-gray-600">{album.description}</p>
+        {/* Album Description with inline editing */}
+        {onUpdateAlbum && isEditingDescription ? (
+          <div className="mb-4 flex items-start gap-2">
+            <textarea
+              value={albumDescription}
+              onChange={(e) => setAlbumDescription(e.target.value)}
+              className="text-base px-2 py-1 border border-gray-300 rounded focus:outline-none focus:border-gray-500 flex-1 min-h-[80px] resize-y"
+              placeholder="Add a description for this album..."
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSaveDescription();
+                if (e.key === 'Escape') handleCancelDescriptionEdit();
+              }}
+              autoFocus
+            />
+            <div className="flex flex-col gap-1">
+              <button
+                onClick={handleSaveDescription}
+                className="p-2 rounded hover:bg-green-50 text-green-600"
+                title="Save (Cmd/Ctrl+Enter)"
+              >
+                <Check className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleCancelDescriptionEdit}
+                className="p-2 rounded hover:bg-red-50 text-red-600"
+                title="Cancel (Esc)"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mb-4 flex items-start gap-2 group">
+            <p className="text-base text-gray-600 flex-1">
+              {album?.description || (onUpdateAlbum && (
+                <span className="text-gray-400 italic">No description</span>
+              ))}
+            </p>
+            {onUpdateAlbum && (
+              <button
+                onClick={handleEditDescription}
+                className="p-1 rounded hover:bg-gray-100 text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Edit album description"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         )}
 
         {/* Metadata Grid */}

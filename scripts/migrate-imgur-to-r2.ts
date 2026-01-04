@@ -13,7 +13,7 @@
  *   npm run migrate:r2 --all
  */
 
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { createReadStream } from 'fs';
@@ -148,6 +148,49 @@ async function uploadMetadata(key: string, data: any): Promise<void> {
   });
 
   await s3Client.send(command);
+}
+
+/**
+ * Update the album index with a newly migrated album
+ */
+async function updateAlbumIndex(albumMetadata: R2AlbumMetadata): Promise<void> {
+  const indexKey = 'albums/index.json';
+
+  try {
+    // Try to load existing index
+    let index: any;
+    try {
+      const getCommand = new GetObjectCommand({
+        Bucket: R2_CONFIG.bucketName,
+        Key: indexKey,
+      });
+      const response = await s3Client.send(getCommand);
+      const body = await response.Body?.transformToString();
+      index = body ? JSON.parse(body) : { albums: {}, version: 1, lastUpdated: new Date().toISOString() };
+    } catch (error: any) {
+      // Index doesn't exist yet, create new one
+      if (error.name === 'NoSuchKey') {
+        index = {
+          albums: {},
+          version: 1,
+          lastUpdated: new Date().toISOString(),
+        };
+      } else {
+        throw error;
+      }
+    }
+
+    // Update the album in the index
+    index.albums[albumMetadata.id] = albumMetadata;
+    index.lastUpdated = new Date().toISOString();
+
+    // Save the updated index
+    await uploadMetadata(indexKey, index);
+  } catch (error) {
+    console.error(`   ⚠️  Warning: Failed to update album index:`, error);
+    console.error(`   💡 You can rebuild the index later with: npm run rebuild-index`);
+    // Don't throw - index update failure shouldn't break the migration
+  }
 }
 
 /**
@@ -305,6 +348,10 @@ async function migrateAlbum(albumFolderName: string, customAlbumId?: string): Pr
   console.log(`   📝 Creating album metadata: ${albumMetadataKey}`);
   await uploadMetadata(albumMetadataKey, r2AlbumMetadata);
 
+  // Update the album index
+  console.log(`   📇 Updating album index...`);
+  await updateAlbumIndex(r2AlbumMetadata);
+
   console.log(`   ✅ Album migrated successfully!`);
   console.log(`   📊 Stats: ${imageIds.length} images uploaded`);
   console.log(`   🆔 New R2 Album ID: ${r2AlbumId}`);
@@ -312,8 +359,10 @@ async function migrateAlbum(albumFolderName: string, customAlbumId?: string): Pr
 
 /**
  * Migrate all albums
+ * @param skip - Number of albums to skip (for resuming migrations)
+ * @param limit - Maximum number of albums to process (for batch processing)
  */
-async function migrateAllAlbums(): Promise<void> {
+async function migrateAllAlbums(skip = 0, limit?: number): Promise<void> {
   const albumFolders = await fs.readdir(ARCHIVE_DIR);
 
   // Filter out hidden files and non-directories
@@ -327,12 +376,30 @@ async function migrateAllAlbums(): Promise<void> {
     }
   }
 
-  console.log(`\n📦 Found ${validAlbums.length} albums to migrate\n`);
+  console.log(`\n📦 Found ${validAlbums.length} albums in archive`);
+
+  // Apply skip and limit
+  const albumsToProcess = limit
+    ? validAlbums.slice(skip, skip + limit)
+    : validAlbums.slice(skip);
+
+  if (skip > 0) {
+    console.log(`   ⏭️  Skipping first ${skip} albums`);
+  }
+  if (limit) {
+    console.log(`   🔢 Processing up to ${limit} albums`);
+  }
+  console.log(`   📝 Processing albums ${skip + 1} to ${skip + albumsToProcess.length} of ${validAlbums.length}\n`);
 
   let successful = 0;
   let failed = 0;
 
-  for (const album of validAlbums) {
+  for (let i = 0; i < albumsToProcess.length; i++) {
+    const album = albumsToProcess[i];
+    const globalIndex = skip + i + 1;
+
+    console.log(`\n[${globalIndex}/${validAlbums.length}] Processing album ${i + 1}/${albumsToProcess.length}`);
+
     try {
       await migrateAlbum(album);
       successful++;
@@ -345,7 +412,14 @@ async function migrateAllAlbums(): Promise<void> {
   console.log(`\n📊 Migration Summary:`);
   console.log(`   ✅ Successful: ${successful}`);
   console.log(`   ❌ Failed: ${failed}`);
-  console.log(`   📦 Total: ${validAlbums.length}`);
+  console.log(`   📦 Processed: ${albumsToProcess.length}`);
+  console.log(`   🔢 Total in archive: ${validAlbums.length}`);
+
+  if (skip + albumsToProcess.length < validAlbums.length) {
+    const remaining = validAlbums.length - (skip + albumsToProcess.length);
+    console.log(`\n💡 To continue migration, run:`);
+    console.log(`   npm run migrate:r2:all -- --skip=${skip + albumsToProcess.length}`);
+  }
 }
 
 /**
@@ -366,19 +440,50 @@ async function main() {
     console.error('  npm run migrate:r2 <album-folder-name> [custom-album-id]');
     console.error('  npm run migrate:r2 0GS1Fkt-gatwick-airport-selfies');
     console.error('  npm run migrate:r2 0GS1Fkt-gatwick-airport-selfies gatwick-selfies');
-    console.error('  npm run migrate:r2 --all');
+    console.error('  npm run migrate:r2:all');
+    console.error('  npm run migrate:r2:all -- --skip=100');
+    console.error('  npm run migrate:r2:all -- --skip=100 --limit=50');
+    console.error('\nOptions for --all:');
+    console.error('  --skip=N    Skip first N albums (useful for resuming)');
+    console.error('  --limit=N   Process at most N albums (useful for batching)');
     console.error('\nExamples:');
     console.error('  npm run migrate:r2 abc123-vacation vacation-2024');
     console.error('  npm run migrate:r2 def456-family-photos family');
+    console.error('  npm run migrate:r2:all -- --skip=150         # Start from album 151');
+    console.error('  npm run migrate:r2:all -- --limit=10         # Process first 10 albums');
+    console.error('  npm run migrate:r2:all -- --skip=100 --limit=50  # Process albums 101-150');
     process.exit(1);
   }
 
-  const albumName = args[0];
-  const customAlbumId = args[1]; // Optional second argument for custom album ID
+  // Parse arguments
+  let skip = 0;
+  let limit: number | undefined;
+  const nonFlagArgs: string[] = [];
+
+  for (const arg of args) {
+    if (arg.startsWith('--skip=')) {
+      skip = parseInt(arg.split('=')[1], 10);
+      if (isNaN(skip) || skip < 0) {
+        console.error('❌ Error: --skip must be a non-negative number');
+        process.exit(1);
+      }
+    } else if (arg.startsWith('--limit=')) {
+      limit = parseInt(arg.split('=')[1], 10);
+      if (isNaN(limit) || limit <= 0) {
+        console.error('❌ Error: --limit must be a positive number');
+        process.exit(1);
+      }
+    } else {
+      nonFlagArgs.push(arg);
+    }
+  }
+
+  const albumName = nonFlagArgs[0];
+  const customAlbumId = nonFlagArgs[1]; // Optional second argument for custom album ID
 
   try {
     if (albumName === '--all') {
-      await migrateAllAlbums();
+      await migrateAllAlbums(skip, limit);
     } else {
       await migrateAlbum(albumName, customAlbumId);
     }

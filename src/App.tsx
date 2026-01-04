@@ -631,13 +631,6 @@ function Dashboard() {
                   <span>Back to Albums</span>
                 </button>
               )}
-              <Link
-                to="/"
-                className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <FolderOpen className="h-4 w-4" />
-                <span>Albums</span>
-              </Link>
             </nav>
           </div>
           <div className="flex items-center space-x-4">

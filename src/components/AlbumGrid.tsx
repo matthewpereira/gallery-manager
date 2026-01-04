@@ -220,13 +220,11 @@ const AlbumCard: React.FC<{
           {album.title || 'Untitled Album'}
         </h3>
 
-        {/* Album Date (if set) */}
-        {album.date && (
-          <div className="flex items-center gap-1.5 text-sm text-gray-600">
-            <Calendar className="w-3.5 h-3.5" />
-            <span>{formatDate(album.date)}</span>
-          </div>
-        )}
+        {/* Album Date (if set) or Creation Date (fallback) */}
+        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+          <Calendar className="w-3.5 h-3.5" />
+          <span>{formatDate(album.date || album.createdAt)}</span>
+        </div>
       </div>
     </div>
   );
