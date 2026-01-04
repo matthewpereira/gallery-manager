@@ -1,5 +1,5 @@
-import { Routes, Route, useLocation, Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { FolderOpen, LogOut, Image as ImageIcon, Plus, ArrowLeft, ChevronLeft, ChevronRight, Download, Search, RefreshCw } from 'lucide-react';
+import { Routes, Route, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { LogOut, Image as ImageIcon, Plus, ArrowLeft, ChevronLeft, ChevronRight, Download, Search, RefreshCw } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from './auth/AuthProvider';
 import { Login } from './pages/Login';
