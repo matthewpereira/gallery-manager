@@ -1,5 +1,5 @@
 import { Routes, Route, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { LogOut, Image as ImageIcon, Plus, ArrowLeft, ChevronLeft, ChevronRight, Download, Search, RefreshCw } from 'lucide-react';
+import { LogOut, Image as ImageIcon, Plus, ArrowLeft, ChevronLeft, ChevronRight, Download, Search, RefreshCw, X } from 'lucide-react';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from './auth/AuthProvider';
 import { Login } from './pages/Login';
@@ -712,7 +712,7 @@ function Dashboard() {
             <div className="mb-12 flex items-center justify-between">
               <h2 className="text-xl font-light text-gray-900 tracking-tight">Your Albums</h2>
               <div className="flex items-center gap-3">
-                {(albums.length > 0 || loading) && (
+                {(albums.length > 0 || loading || allAlbums.length > 0) && (
                   <>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -721,9 +721,18 @@ function Dashboard() {
                         placeholder="Filter albums..."
                         value={filterText}
                         onChange={(e) => setFilterText(e.target.value)}
-                        className="w-64 rounded-xl border border-gray-200 pl-10 pr-4 py-2.5 text-sm focus:border-gray-400 focus:outline-none focus:ring-0 transition-colors"
+                        className="w-64 rounded-xl border border-gray-200 pl-10 pr-10 py-2.5 text-sm focus:border-gray-400 focus:outline-none focus:ring-0 transition-colors"
                         disabled={loading}
                       />
+                      {filterText && (
+                        <button
+                          onClick={() => setFilterText('')}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                          aria-label="Clear filter"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                     <button
                       onClick={() => fetchAlbums(true)}
@@ -859,6 +868,14 @@ function Dashboard() {
                   </div>
                 </div>
               </>
+            ) : filterText.trim() ? (
+              <div className="rounded-lg bg-white p-8 text-center">
+                <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No albums match your filter</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  No albums found matching "{filterText}". Try a different search term or clear the filter above.
+                </p>
+              </div>
             ) : (
               <div className="rounded-lg bg-white p-8 text-center">
                 <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />

@@ -1,0 +1,13 @@
+[
+  {
+    "AllowedOrigins": [
+      "https://gallery.matthewpereira.com",
+      "http://localhost:5173",
+      "http://localhost:4173"
+    ],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]
