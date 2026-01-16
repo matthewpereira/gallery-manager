@@ -38,6 +38,9 @@ interface CachedUrl {
   expiresAt: number; // Unix timestamp
 }
 
+// Textsite R2 Worker API URL for cache invalidation
+const TEXTSITE_R2_API_URL = 'https://textsite-r2-api.matthewpereira.workers.dev';
+
 export class R2Adapter implements StorageProvider {
   readonly name = 'r2';
   private client: S3Client;
@@ -86,6 +89,26 @@ export class R2Adapter implements StorageProvider {
   private ensureAuthenticated(): void {
     if (!this.authenticated) {
       throw new Error('User not authenticated. Please log in to access storage.');
+    }
+  }
+
+  /**
+   * Invalidate the textsite albums cache
+   * Called when albums are created, deleted, or renamed
+   */
+  private async invalidateTextsiteCache(): Promise<void> {
+    try {
+      const response = await fetch(`${TEXTSITE_R2_API_URL}/api/cache/invalidate`, {
+        method: 'POST',
+      });
+      if (response.ok) {
+        console.log('[R2Adapter] Textsite albums cache invalidated');
+      } else {
+        console.warn('[R2Adapter] Failed to invalidate textsite cache:', response.status);
+      }
+    } catch (error) {
+      // Don't fail the operation if cache invalidation fails
+      console.warn('[R2Adapter] Failed to invalidate textsite cache:', error);
     }
   }
 
@@ -706,6 +729,9 @@ export class R2Adapter implements StorageProvider {
     // Update the index with the new album
     await this.updateAlbumInIndex(metadata);
 
+    // Invalidate textsite cache so new album appears
+    await this.invalidateTextsiteCache();
+
     return this.albumMetadataToAlbum(metadata, coverImageUrl);
   }
 
@@ -809,6 +835,9 @@ export class R2Adapter implements StorageProvider {
 
       // Remove the album from the index
       await this.removeAlbumFromIndex(id);
+
+      // Invalidate textsite cache so deleted album disappears
+      await this.invalidateTextsiteCache();
 
       return true;
     } catch (error) {
@@ -993,6 +1022,9 @@ export class R2Adapter implements StorageProvider {
       // Update the index: remove old ID and add new ID
       await this.removeAlbumFromIndex(oldId);
       await this.updateAlbumInIndex(newMetadata);
+
+      // Invalidate textsite cache so renamed album appears with new ID
+      await this.invalidateTextsiteCache();
 
       onProgress?.('Complete!', 100);
       console.log(`[R2Adapter] Successfully renamed album from "${oldId}" to "${newId}"`);
