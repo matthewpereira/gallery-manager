@@ -35,10 +35,22 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          # Set environment variables for build
+          # Auth0
+          VITE_AUTH0_CLIENT_ID: ${{ secrets.VITE_AUTH0_CLIENT_ID }}
+          VITE_AUTH0_DOMAIN: ${{ secrets.VITE_AUTH0_DOMAIN }}
+          VITE_AUTH0_AUDIENCE: ${{ secrets.VITE_AUTH0_AUDIENCE }}
+          VITE_AUTH0_REDIRECT_URI: ${{ secrets.VITE_AUTH0_REDIRECT_URI }}
+          # Imgur
           VITE_IMGUR_CLIENT_ID: ${{ secrets.VITE_IMGUR_CLIENT_ID }}
           VITE_IMGUR_CLIENT_SECRET: ${{ secrets.VITE_IMGUR_CLIENT_SECRET }}
           VITE_IMGUR_REDIRECT_URI: ${{ secrets.VITE_IMGUR_REDIRECT_URI }}
+          # R2
+          VITE_STORAGE_PROVIDER: ${{ secrets.VITE_STORAGE_PROVIDER }}
+          VITE_R2_BUCKET_NAME: ${{ secrets.VITE_R2_BUCKET_NAME }}
+          VITE_R2_ACCESS_KEY_ID: ${{ secrets.VITE_R2_ACCESS_KEY_ID }}
+          VITE_R2_SECRET_ACCESS_KEY: ${{ secrets.VITE_R2_SECRET_ACCESS_KEY }}
+          VITE_R2_ENDPOINT: ${{ secrets.VITE_R2_ENDPOINT }}
+          VITE_R2_PUBLIC_URL: ${{ secrets.VITE_R2_PUBLIC_URL }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
