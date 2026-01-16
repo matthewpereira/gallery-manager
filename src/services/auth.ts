@@ -321,7 +321,11 @@ class AuthService {
     this.imgurToken = null;
     localStorage.removeItem(this.imgurTokenKey);
 
-    // Logout from Auth0
+    // Clear gallery cache
+    localStorage.removeItem('gallery-albums-cache');
+
+    // Logout from Auth0 - this redirects to Auth0's logout endpoint
+    // which clears the Auth0 session, then redirects back to our app
     if (this.auth0Client) {
       const logoutRedirectUri = this.auth0RedirectUri || window.location.origin;
       await this.auth0Client.logout({

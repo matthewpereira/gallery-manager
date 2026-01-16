@@ -203,17 +203,18 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const logout = async () => {
+    // Clear local state first
+    setIsAuthenticated(false);
+    setUser(null);
+
     try {
+      // This will redirect to Auth0's logout endpoint, then back to our app
+      // Code after this won't execute due to the redirect
       await authService.logout();
-      setIsAuthenticated(false);
-      setUser(null);
-      navigate('/');
     } catch (error) {
       console.error('Logout error:', error);
-      // Even if logout fails, clear local state
-      setIsAuthenticated(false);
-      setUser(null);
-      navigate('/');
+      // If logout fails (e.g., Auth0 not initialized), redirect to login
+      navigate('/login');
     }
   };
 
