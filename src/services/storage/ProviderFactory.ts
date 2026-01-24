@@ -6,9 +6,9 @@
 
 import type { StorageProvider } from './StorageProvider';
 import { ImgurAdapter } from './adapters/ImgurAdapter';
-import { R2Adapter } from './adapters/R2Adapter';
+import { WorkerAdapter } from './adapters/WorkerAdapter';
 
-export type ProviderType = 'imgur' | 'r2' | 's3' | 'gdrive';
+export type ProviderType = 'imgur' | 'r2' | 'worker' | 's3' | 'gdrive';
 
 /**
  * Create a storage provider instance based on the provider type
@@ -21,7 +21,11 @@ export function createStorageProvider(type: ProviderType = 'imgur'): StorageProv
       return new ImgurAdapter();
 
     case 'r2':
-      return new R2Adapter();
+    case 'worker':
+      // Both 'r2' and 'worker' now use the WorkerAdapter
+      // The WorkerAdapter communicates with the Cloudflare Worker API
+      // which handles R2 access server-side (no credentials in frontend)
+      return new WorkerAdapter();
 
     case 's3':
       // Future implementation
@@ -49,7 +53,7 @@ export function getProviderTypeFromEnv(): ProviderType {
 
   const normalized = envProvider.toLowerCase();
 
-  if (normalized === 'imgur' || normalized === 'r2' || normalized === 's3' || normalized === 'gdrive') {
+  if (normalized === 'imgur' || normalized === 'r2' || normalized === 'worker' || normalized === 's3' || normalized === 'gdrive') {
     return normalized as ProviderType;
   }
 

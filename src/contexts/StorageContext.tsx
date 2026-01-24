@@ -22,7 +22,7 @@ const StorageContext = createContext<StorageContextValue | null>(null);
  * Wraps the application and provides storage provider access to all components
  */
 export function StorageProviderContext({ children }: PropsWithChildren) {
-  const { user } = useAuth();
+  const { user, getToken } = useAuth();
 
   const value = useMemo(() => {
     const providerType = getProviderTypeFromEnv();
@@ -36,13 +36,30 @@ export function StorageProviderContext({ children }: PropsWithChildren) {
     };
   }, []);
 
-  // Set authentication status for R2 when user logs in/out
+  // Set authentication status and access token when user logs in/out
   useEffect(() => {
-    if (value.providerName === 'r2' && 'setAuthenticated' in value.provider) {
-      (value.provider as any).setAuthenticated(!!user);
-      console.log(`[StorageContext] Set R2 authentication status: ${!!user}`);
-    }
-  }, [user, value.provider, value.providerName]);
+    const updateAuth = async () => {
+      // Check if the provider supports setAuthenticated (Worker or R2 adapter)
+      if ('setAuthenticated' in value.provider) {
+        (value.provider as any).setAuthenticated(!!user);
+        console.log(`[StorageContext] Set authentication status: ${!!user}`);
+      }
+
+      // Set access token for Worker adapter
+      if ('setAccessToken' in value.provider) {
+        if (user) {
+          const token = await getToken();
+          (value.provider as any).setAccessToken(token);
+          console.log(`[StorageContext] Set access token: ${token ? 'present' : 'null'}`);
+        } else {
+          (value.provider as any).setAccessToken(null);
+          console.log(`[StorageContext] Cleared access token`);
+        }
+      }
+    };
+
+    updateAuth();
+  }, [user, getToken, value.provider]);
 
   return (
     <StorageContext.Provider value={value}>

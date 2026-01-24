@@ -13,13 +13,11 @@ dist-ssr
 *.local
 
 # Environment variables
+# .env.development and .env.production are safe to commit (no secrets)
+# Only local overrides should be ignored
 .env
 .env.local
-.env.development
-.env.development.local
-.env.test.local
-.env.production
-.env.production.local
+.env.*.local
 
 # Editor directories and files
 .vscode/*
