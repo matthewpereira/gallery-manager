@@ -76,7 +76,7 @@ class AuthService {
           redirect_uri: redirectUri,
           audience: this.auth0Audience,
         },
-        cacheLocation: 'memory',
+        cacheLocation: 'localstorage',
         useRefreshTokens: true,
       });
 
@@ -323,6 +323,14 @@ class AuthService {
 
     // Clear gallery cache
     localStorage.removeItem('gallery-albums-cache');
+
+    // Clear Auth0 localStorage cache before logout redirect
+    const auth0CacheKey = `@@auth0spajs@@::${this.auth0ClientId}`;
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith(auth0CacheKey) || key.startsWith('@@auth0spajs@@')) {
+        localStorage.removeItem(key);
+      }
+    });
 
     // Logout from Auth0 - this redirects to Auth0's logout endpoint
     // which clears the Auth0 session, then redirects back to our app

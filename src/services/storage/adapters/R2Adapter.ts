@@ -1263,15 +1263,37 @@ export class R2Adapter implements StorageProvider {
       // Add new image IDs (avoid duplicates)
       const updatedImageIds = [...new Set([...metadata.imageIds, ...imageIds])];
 
+      // If album has no cover and we're adding images, set first image as cover
+      let coverImageId = metadata.coverImageId;
+      let coverImageUrl = metadata.coverImageUrl;
+      if (!coverImageId && imageIds.length > 0) {
+        coverImageId = imageIds[0];
+        // Generate cover image URL
+        try {
+          const coverMetadataKey = this.keys.imageMetadata(coverImageId);
+          const coverMetadata = await this.downloadMetadata<R2ImageMetadata>(coverMetadataKey);
+          const coverExt = this.getExtension('', coverMetadata.mimeType);
+          const coverKey = this.keys.albumImage(albumId, coverImageId, coverExt);
+          coverImageUrl = await this.getPresignedUrl(coverKey);
+        } catch (error) {
+          console.warn(`[R2Adapter] Failed to generate cover URL for album ${albumId}:`, error);
+        }
+      }
+
       // Update album metadata
       const updatedMetadata: R2AlbumMetadata = {
         ...metadata,
         imageIds: updatedImageIds,
         imageCount: updatedImageIds.length,
+        coverImageId,
+        coverImageUrl,
         updatedAt: new Date().toISOString(),
       };
 
       await this.uploadMetadata(metadataKey, updatedMetadata);
+
+      // Update the album index so list views reflect the new count/cover
+      await this.updateAlbumInIndex(updatedMetadata);
 
       // Update each image's metadata to reference the album
       for (const imageId of imageIds) {
@@ -1309,19 +1331,25 @@ export class R2Adapter implements StorageProvider {
       // Remove image IDs
       const updatedImageIds = metadata.imageIds.filter(id => !imageIds.includes(id));
 
+      // Determine if cover needs to be cleared/updated
+      const coverWasRemoved = imageIds.includes(metadata.coverImageId || '');
+      let coverImageId = coverWasRemoved ? undefined : metadata.coverImageId;
+      let coverImageUrl = coverWasRemoved ? undefined : metadata.coverImageUrl;
+
       // Update album metadata
       const updatedMetadata: R2AlbumMetadata = {
         ...metadata,
         imageIds: updatedImageIds,
         imageCount: updatedImageIds.length,
+        coverImageId,
+        coverImageUrl,
         updatedAt: new Date().toISOString(),
-        // Clear cover if it was one of the removed images
-        coverImageId: imageIds.includes(metadata.coverImageId || '')
-          ? undefined
-          : metadata.coverImageId,
       };
 
       await this.uploadMetadata(metadataKey, updatedMetadata);
+
+      // Update the album index so list views reflect the new count/cover
+      await this.updateAlbumInIndex(updatedMetadata);
 
       // Update each image's metadata to remove album reference
       for (const imageId of imageIds) {
