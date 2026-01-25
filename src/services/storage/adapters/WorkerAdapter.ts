@@ -92,7 +92,8 @@ export class WorkerAdapter implements StorageProvider {
    */
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    noCache = false
   ): Promise<T> {
     const url = `${this.config.apiUrl}${endpoint}`;
     const headers: Record<string, string> = {
@@ -112,6 +113,8 @@ export class WorkerAdapter implements StorageProvider {
     const response = await fetch(url, {
       ...options,
       headers,
+      // Bypass browser cache when noCache is true
+      ...(noCache && { cache: 'no-store' as RequestCache }),
     });
 
     if (!response.ok) {
@@ -177,7 +180,8 @@ export class WorkerAdapter implements StorageProvider {
   async listAlbums(page?: number): Promise<Album[]> {
     this.ensureAuthenticated();
 
-    const response = await this.request<{ albums: WorkerAlbumResponse[] }>('/api/albums');
+    // Use noCache to ensure we always get fresh album data (including updated cover images)
+    const response = await this.request<{ albums: WorkerAlbumResponse[] }>('/api/albums', {}, true);
     let albums = response.albums.map(a => this.toAlbum(a));
 
     // Sort by creation date (newest first)
@@ -205,7 +209,8 @@ export class WorkerAdapter implements StorageProvider {
     }
 
     const endpoint = `/api/albums/${encodeURIComponent(id)}${params.toString() ? `?${params}` : ''}`;
-    const data = await this.request<WorkerAlbumResponse>(endpoint);
+    // Use noCache to ensure fresh data when loading album details
+    const data = await this.request<WorkerAlbumResponse>(endpoint, {}, true);
 
     return {
       ...this.toAlbum(data),
@@ -349,6 +354,9 @@ export class WorkerAdapter implements StorageProvider {
     }
 
     const data = await response.json();
+
+    // Invalidate cache so album list shows updated cover image
+    await this.invalidateCache();
 
     // Convert response to Image model
     // The worker returns R2ImageMetadata, not the full image response
