@@ -52,8 +52,8 @@ const AlbumCard: React.FC<{
       return;
     }
 
-    // If album has no cover image ID, nothing to load
-    if (!album.metadata?.coverImageId) {
+    // If album has no images, nothing to load
+    if (!album.imageCount || album.imageCount === 0) {
       setIsLoading(false);
       loadAttemptedSet.add(album.id);
       return;
@@ -80,10 +80,12 @@ const AlbumCard: React.FC<{
           try {
             // Load the album with just the cover image
             const albumDetails = await storage.getAlbum(album.id, { imageLimit: 1 });
-            if (albumDetails.coverImageUrl) {
-              setCoverUrl(albumDetails.coverImageUrl);
+            // Use coverImageUrl if available, otherwise fallback to first image
+            const url = albumDetails.coverImageUrl || albumDetails.images?.[0]?.url;
+            if (url) {
+              setCoverUrl(url);
               // Cache the URL so we don't refetch it
-              coverUrlCache.set(album.id, albumDetails.coverImageUrl);
+              coverUrlCache.set(album.id, url);
             }
           } catch (error) {
             console.error(`Failed to load cover for album ${album.id}:`, error);
@@ -108,7 +110,7 @@ const AlbumCard: React.FC<{
         observer.unobserve(cardRef.current);
       }
     };
-  }, [album.id, album.metadata?.coverImageId, coverUrl, storage]);
+  }, [album.id, album.imageCount, coverUrl, storage]);
 
   const formatDate = (date: Date | string | number) => {
     const dateObj = date instanceof Date ? date : new Date(date);

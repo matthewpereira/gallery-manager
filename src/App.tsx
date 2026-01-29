@@ -127,10 +127,10 @@ function Dashboard() {
         return;
       }
 
-      // For R2, add a small delay to ensure authentication status has propagated
+      // For R2/Worker, add a small delay to ensure authentication status has propagated
       // This fixes a race condition where the effect runs before StorageContext sets auth status
-      if (storageProvider === 'r2') {
-        console.log('[App] fetchAlbums - Waiting for R2 auth to propagate');
+      if (storageProvider === 'r2' || storageProvider === 'worker') {
+        console.log('[App] fetchAlbums - Waiting for R2/Worker auth to propagate');
         await new Promise(resolve => setTimeout(resolve, 50));
       }
 
