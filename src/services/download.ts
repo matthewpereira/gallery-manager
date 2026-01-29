@@ -1,7 +1,6 @@
 /**
  * Service for downloading albums and images with metadata preservation
  */
-import JSZip from 'jszip';
 import type { StorageProvider } from './storage/StorageProvider';
 import type { Image } from '../types/models';
 import type {
@@ -66,6 +65,7 @@ export class DownloadService {
       });
 
       // Create ZIP structure
+      const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
       const manifest: ExportManifest = {
         exportDate: new Date().toISOString(),

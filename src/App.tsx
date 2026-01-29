@@ -1,8 +1,9 @@
 import { Routes, Route, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { LogOut, Image as ImageIcon, Plus, ArrowLeft, ChevronLeft, ChevronRight, Download, Search, RefreshCw, X } from 'lucide-react';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { useAuth } from './auth/AuthProvider';
-import { Login } from './pages/Login';
+
+const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 import { AlbumGrid } from './components/AlbumGrid';
 import { CreateAlbumModal } from './components/CreateAlbumModal';
 import AlbumView from './components/AlbumView';
@@ -960,6 +961,11 @@ function Dashboard() {
 function App() {
   return (
     <div className="min-h-screen bg-gray-50">
+      <Suspense fallback={
+        <div className="flex h-screen w-full items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-gray-900"></div>
+        </div>
+      }>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route
@@ -984,6 +990,7 @@ function App() {
           </ProtectedRoute>
         } />
       </Routes>
+      </Suspense>
     </div>
   );
 }
