@@ -1,5 +1,5 @@
 import { Routes, Route, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { LogOut, Image as ImageIcon, Plus, ArrowLeft, ChevronLeft, ChevronRight, Download, Search, RefreshCw, X } from 'lucide-react';
+import { LogOut, Image as ImageIcon, Plus, ArrowLeft, ChevronLeft, ChevronRight, Download, Search, RefreshCw, X, Moon, Sun } from 'lucide-react';
 import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { useAuth } from './auth/AuthProvider';
 
@@ -8,6 +8,7 @@ import { AlbumGrid } from './components/AlbumGrid';
 import { CreateAlbumModal } from './components/CreateAlbumModal';
 import AlbumView from './components/AlbumView';
 import { useStorage, useStorageProvider } from './contexts/StorageContext';
+import { useTheme } from './contexts/ThemeContext';
 import { DownloadService } from './services/download';
 import { DownloadProgressModal } from './components/DownloadProgressModal';
 import { UploadProgressModal, type UploadProgress } from './components/UploadProgressModal';
@@ -52,6 +53,7 @@ function Dashboard() {
   const { user, getToken, logout } = useAuth();
   const storage = useStorage();
   const storageProvider = useStorageProvider();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -641,16 +643,16 @@ function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <header className="border-b border-gray-100">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
+      <header className="border-b border-gray-100 dark:border-gray-800">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 lg:px-8">
           <div className="flex items-center space-x-8">
-            <h1 className="text-2xl font-light text-gray-900 tracking-tight">Gallery Manager</h1>
+            <h1 className="text-2xl font-light text-gray-900 dark:text-gray-100 tracking-tight">Gallery Manager</h1>
             <nav className="flex items-center space-x-1">
               {albumIdFromUrl && selectedAlbum && (
                 <button
                   onClick={handleBackToAlbums}
-                  className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   <span>Back to Albums</span>
@@ -688,8 +690,15 @@ function Dashboard() {
               </div>
             )}
             <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-800 transition-colors"
+              title={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            >
+              {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            </button>
+            <button
               onClick={() => logout()}
-              className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors"
             >
               <LogOut className="h-4 w-4" />
               <span>Logout</span>
@@ -735,7 +744,7 @@ function Dashboard() {
         {!albumIdFromUrl ? (
           <div>
             <div className="mb-12 flex items-center justify-between">
-              <h2 className="text-xl font-light text-gray-900 tracking-tight">Your Albums</h2>
+              <h2 className="text-xl font-light text-gray-900 dark:text-gray-100 tracking-tight">Your Albums</h2>
               <div className="flex items-center gap-3">
                 {(albums.length > 0 || loading || allAlbums.length > 0) && (
                   <>
@@ -746,7 +755,7 @@ function Dashboard() {
                         placeholder="Filter albums..."
                         value={filterText}
                         onChange={(e) => setFilterText(e.target.value)}
-                        className="w-64 rounded-xl border border-gray-200 pl-10 pr-10 py-2.5 text-sm focus:border-gray-400 focus:outline-none focus:ring-0 transition-colors"
+                        className="w-64 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 pl-10 pr-10 py-2.5 text-sm focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none focus:ring-0 transition-colors placeholder:text-gray-400 dark:placeholder:text-gray-500"
                         disabled={loading}
                       />
                       {filterText && (
@@ -762,7 +771,7 @@ function Dashboard() {
                     <button
                       onClick={() => fetchAlbums(true)}
                       disabled={isRefreshing}
-                      className="inline-flex items-center rounded-xl bg-white border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="inline-flex items-center rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Refresh albums"
                     >
                       <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} aria-hidden="true" />
@@ -811,26 +820,26 @@ function Dashboard() {
                 />
 
                 {/* Pagination Controls */}
-                <div className="mt-6 flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-lg">
+                <div className="mt-6 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 sm:px-6 rounded-lg">
                   <div className="flex flex-1 justify-between sm:hidden">
                     <button
                       onClick={handlePreviousPage}
                       disabled={currentPage === 0}
-                      className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="relative inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Previous
                     </button>
                     <button
                       onClick={handleNextPage}
                       disabled={currentPage + 1 >= totalPages}
-                      className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Next
                     </button>
                   </div>
                   <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-sm text-gray-700">
+                      <p className="text-sm text-gray-700 dark:text-gray-300">
                         Showing <span className="font-medium">{albums.length}</span> of{' '}
                         <span className="font-medium">{totalAlbums}</span> albums
                         {filterText && ' (filtered)'}
@@ -839,11 +848,11 @@ function Dashboard() {
                     <div className="flex items-center gap-4">
                       {/* Sort control */}
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-700">Sort by:</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">Sort by:</span>
                         <select
                           value={sortBy}
                           onChange={(e) => setSortBy(e.target.value as 'title' | 'date' | 'imageCount')}
-                          className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 focus:border-gray-400 focus:outline-none focus:ring-0 transition-colors"
+                          className="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 focus:border-gray-400 dark:focus:border-gray-500 focus:outline-none focus:ring-0 transition-colors"
                         >
                           <option value="date">Most recent</option>
                           <option value="title">Title</option>
@@ -856,7 +865,7 @@ function Dashboard() {
                         <button
                           onClick={handlePreviousPage}
                           disabled={currentPage === 0}
-                          className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 dark:text-gray-500 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <span className="sr-only">Previous</span>
                           <ChevronLeft className="h-5 w-5" aria-hidden="true" />
@@ -869,10 +878,10 @@ function Dashboard() {
                             <button
                               key={pageNum}
                               onClick={() => handlePageClick(pageNum)}
-                              className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-inset ring-gray-300 focus:z-20 focus:outline-offset-0 ${
+                              className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-inset focus:z-20 focus:outline-offset-0 ${
                                 isCurrentPage
                                   ? 'z-10 bg-blue-600 text-white ring-blue-600 hover:bg-blue-500'
-                                  : 'text-gray-900 hover:bg-gray-50 bg-white'
+                                  : 'text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 ring-gray-300 dark:ring-gray-600'
                               }`}
                             >
                               {pageNum + 1}
@@ -883,7 +892,7 @@ function Dashboard() {
                         <button
                           onClick={handleNextPage}
                           disabled={currentPage + 1 >= totalPages}
-                          className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 dark:text-gray-500 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <span className="sr-only">Next</span>
                           <ChevronRight className="h-5 w-5" aria-hidden="true" />

@@ -124,7 +124,7 @@ const AlbumCard: React.FC<{
       onClick={() => !isInProgress && onAlbumClick?.(album)}
     >
       {/* Image */}
-      <div className="relative overflow-hidden rounded-2xl mb-3 bg-gray-100">
+      <div className="relative overflow-hidden rounded-2xl mb-3 bg-gray-100 dark:bg-gray-800">
         {isLoading ? (
           <div className="w-full aspect-[4/3] flex items-center justify-center">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-gray-400"></div>
@@ -138,16 +138,16 @@ const AlbumCard: React.FC<{
           />
         ) : (
           <div className="w-full aspect-[4/3] flex items-center justify-center">
-            <ImageIcon className="w-12 h-12 text-gray-300" />
+            <ImageIcon className="w-12 h-12 text-gray-300 dark:text-gray-600" />
           </div>
         )}
 
         {/* Loading overlay for albums in progress */}
         {isInProgress && (
-          <div className="absolute inset-0 bg-white/75 backdrop-blur-sm flex items-center justify-center">
+          <div className="absolute inset-0 bg-white/75 dark:bg-gray-900/75 backdrop-blur-sm flex items-center justify-center">
             <div className="flex flex-col items-center gap-2">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-gray-900"></div>
-              <span className="text-sm font-medium text-gray-700">Processing...</span>
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 dark:border-gray-600 border-t-gray-900 dark:border-t-gray-100"></div>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Processing...</span>
             </div>
           </div>
         )}
@@ -157,13 +157,13 @@ const AlbumCard: React.FC<{
           {/* Copy Link Button */}
           <button
             onClick={(e) => onCopyLink(album, e)}
-            className="bg-white/90 backdrop-blur-sm hover:bg-white p-2.5 rounded-xl transition-all shadow-lg"
+            className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-700 p-2.5 rounded-xl transition-all shadow-lg"
             title={isCopied ? 'Link copied!' : 'Copy link'}
           >
             {isCopied ? (
               <Check className="w-4 h-4 text-green-600" />
             ) : (
-              <Link className="w-4 h-4 text-gray-700" />
+              <Link className="w-4 h-4 text-gray-700 dark:text-gray-300" />
             )}
           </button>
 
@@ -173,10 +173,10 @@ const AlbumCard: React.FC<{
                 e.stopPropagation();
                 onAlbumDownload(album.id);
               }}
-              className="bg-white/90 backdrop-blur-sm hover:bg-white p-2.5 rounded-xl transition-all shadow-lg"
+              className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-700 p-2.5 rounded-xl transition-all shadow-lg"
               title="Download album"
             >
-              <Download className="w-4 h-4 text-gray-700" />
+              <Download className="w-4 h-4 text-gray-700 dark:text-gray-300" />
             </button>
           )}
 
@@ -186,7 +186,7 @@ const AlbumCard: React.FC<{
                 e.stopPropagation();
                 onAlbumDelete(album.id);
               }}
-              className="bg-white/90 backdrop-blur-sm hover:bg-white p-2.5 rounded-xl transition-all shadow-lg"
+              className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-700 p-2.5 rounded-xl transition-all shadow-lg"
               title="Delete album"
             >
               <Trash2 className="w-4 h-4 text-red-600" />
@@ -198,16 +198,16 @@ const AlbumCard: React.FC<{
       {/* Hover-revealed metadata */}
       <div className="relative z-40">
         <div className="z-40 transition-all duration-300 ease-in-out h-0 -t-50 opacity-0 group-hover:opacity-100">
-          <div className="bg-white relative top-1 space-y-2 min-h-16">
+          <div className="bg-white dark:bg-gray-900 relative top-1 space-y-2 min-h-16">
             {/* Uploaded Date */}
-            <div className="flex items-center gap-2 text-xs text-gray-600">
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
               <Upload className="w-3 h-3" />
               <span className="font-medium">Uploaded:</span>
               <span>{formatDate(album.createdAt)}</span>
             </div>
 
             {/* Image Count */}
-            <div className="flex items-center gap-2 text-xs text-gray-600">
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
               <ImageIcon className="w-3 h-3" />
               <span className="font-medium">Images:</span>
               <span>{album.imageCount} {album.imageCount === 1 ? 'image' : 'images'}</span>
@@ -218,12 +218,12 @@ const AlbumCard: React.FC<{
 
       {/* Content - Title and Date (always visible) */}
       <div className="space-y-1">
-        <h3 className="font-medium text-lg text-gray-900 line-clamp-2 leading-snug group-hover:text-gray-600 transition-colors">
+        <h3 className="font-medium text-lg text-gray-900 dark:text-gray-100 line-clamp-2 leading-snug group-hover:text-gray-600 dark:group-hover:text-gray-400 transition-colors">
           {album.title || 'Untitled Album'}
         </h3>
 
         {/* Album Date (if set) or Creation Date (fallback) */}
-        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+        <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
           <Calendar className="w-3.5 h-3.5" />
           <span>{formatDate(album.date || album.createdAt)}</span>
         </div>

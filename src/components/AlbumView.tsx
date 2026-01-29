@@ -491,10 +491,10 @@ const AlbumView: React.FC<AlbumViewProps> = ({
           {error}
         </div>
       )}
-      <button onClick={onBack} className="mb-6 text-gray-600 hover:text-gray-900 transition-colors">← Back to Albums</button>
+      <button onClick={onBack} className="mb-6 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors">← Back to Albums</button>
 
       {/* Album Header Section */}
-      <div className="mb-8 bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+      <div className="mb-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-sm">
         {/* Album Title with inline editing */}
         {onUpdateAlbum && isEditingTitle ? (
           <div className="mb-4 flex items-center gap-2">
@@ -502,7 +502,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
               type="text"
               value={albumTitle}
               onChange={(e) => setAlbumTitle(e.target.value)}
-              className="text-3xl font-light px-2 py-1 border border-gray-300 rounded focus:outline-none focus:border-gray-500 flex-1"
+              className="text-3xl font-light px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:border-gray-500 flex-1"
               placeholder="Enter album title"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSaveTitle();
@@ -527,11 +527,11 @@ const AlbumView: React.FC<AlbumViewProps> = ({
           </div>
         ) : (
           <div className="mb-4 flex items-center gap-2">
-            <h2 className="text-3xl font-light text-gray-900">{album?.title || 'Untitled Album'}</h2>
+            <h2 className="text-3xl font-light text-gray-900 dark:text-gray-100">{album?.title || 'Untitled Album'}</h2>
             {onUpdateAlbum && (
               <button
                 onClick={handleEditTitle}
-                className="p-1 rounded hover:bg-gray-100 text-gray-600"
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
                 title="Edit album title"
               >
                 <Edit2 className="w-4 h-4" />
@@ -546,7 +546,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
             <textarea
               value={albumDescription}
               onChange={(e) => setAlbumDescription(e.target.value)}
-              className="text-base px-2 py-1 border border-gray-300 rounded focus:outline-none focus:border-gray-500 flex-1 min-h-[80px] resize-y"
+              className="text-base px-2 py-1 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:border-gray-500 flex-1 min-h-[80px] resize-y"
               placeholder="Add a description for this album..."
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSaveDescription();
@@ -573,15 +573,15 @@ const AlbumView: React.FC<AlbumViewProps> = ({
           </div>
         ) : (
           <div className="mb-4 flex items-start gap-2 group">
-            <p className="text-base text-gray-600 flex-1">
+            <p className="text-base text-gray-600 dark:text-gray-400 flex-1">
               {album?.description || (onUpdateAlbum && (
-                <span className="text-gray-400 italic">No description</span>
+                <span className="text-gray-400 dark:text-gray-500 italic">No description</span>
               ))}
             </p>
             {onUpdateAlbum && (
               <button
                 onClick={handleEditDescription}
-                className="p-1 rounded hover:bg-gray-100 text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity"
                 title="Edit album description"
               >
                 <Edit2 className="w-4 h-4" />
@@ -591,17 +591,17 @@ const AlbumView: React.FC<AlbumViewProps> = ({
         )}
 
         {/* Metadata Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-gray-100">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-gray-100 dark:border-gray-700">
           {/* Album ID */}
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Album ID</span>
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Album ID</span>
             {isEditingId ? (
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   value={newAlbumId}
                   onChange={(e) => setNewAlbumId(e.target.value)}
-                  className="px-2 py-1.5 text-sm font-mono border border-gray-300 rounded focus:outline-none focus:border-gray-500 flex-1"
+                  className="px-2 py-1.5 text-sm font-mono border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:border-gray-500 flex-1"
                   placeholder="Enter new album ID"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSaveRename();
@@ -626,13 +626,13 @@ const AlbumView: React.FC<AlbumViewProps> = ({
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <code className="text-sm text-gray-900 font-mono bg-gray-50 px-3 py-1.5 rounded border border-gray-200">
+                <code className="text-sm text-gray-900 dark:text-gray-100 font-mono bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded border border-gray-200 dark:border-gray-600">
                   {album?.id}
                 </code>
                 {onRenameAlbum && (
                   <button
                     onClick={handleStartEdit}
-                    className="p-1 rounded hover:bg-gray-100 text-gray-600"
+                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
                     title="Edit album ID"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
@@ -645,11 +645,11 @@ const AlbumView: React.FC<AlbumViewProps> = ({
           {/* Imgur ID (read-only) */}
           {album?.imgurId && (
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide flex items-center gap-1">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1">
                 <Link className="w-3 h-3" />
                 Legacy Imgur ID
               </span>
-              <code className="text-sm text-gray-700 font-mono bg-gray-50 px-3 py-1.5 rounded border border-gray-200 w-fit">
+              <code className="text-sm text-gray-700 dark:text-gray-300 font-mono bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded border border-gray-200 dark:border-gray-600 w-fit">
                 {album.imgurId}
               </code>
             </div>
@@ -658,7 +658,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
           {/* Album Date */}
           {onUpdateAlbum && (
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide flex items-center gap-1">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1">
                 <Calendar className="w-3 h-3" />
                 Album Date
               </span>
@@ -668,7 +668,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
                     type="date"
                     value={albumDate}
                     onChange={(e) => setAlbumDate(e.target.value)}
-                    className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:border-gray-500"
+                    className="px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded focus:outline-none focus:border-gray-500"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleSaveDate();
                       if (e.key === 'Escape') handleCancelDateEdit();
@@ -692,7 +692,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
                   {albumDate && (
                     <button
                       onClick={handleClearDate}
-                      className="px-2 py-1 text-xs rounded hover:bg-gray-100 text-gray-600"
+                      className="px-2 py-1 text-xs rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
                       title="Clear date"
                     >
                       Clear
@@ -701,12 +701,12 @@ const AlbumView: React.FC<AlbumViewProps> = ({
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-900 bg-gray-50 px-3 py-1.5 rounded border border-gray-200">
+                  <span className="text-sm text-gray-900 dark:text-gray-100 bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded border border-gray-200 dark:border-gray-600">
                     {formatDisplayDate(album?.date)}
                   </span>
                   <button
                     onClick={handleEditDate}
-                    className="p-1 rounded hover:bg-gray-100 text-gray-600"
+                    className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400"
                     title="Edit album date"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
@@ -719,11 +719,11 @@ const AlbumView: React.FC<AlbumViewProps> = ({
           {/* Upload Date (read-only) */}
           {album?.createdAt && (
             <div className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide flex items-center gap-1">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide flex items-center gap-1">
                 <Upload className="w-3 h-3" />
                 Uploaded
               </span>
-              <span className="text-sm text-gray-700 bg-gray-50 px-3 py-1.5 rounded border border-gray-200 w-fit">
+              <span className="text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 px-3 py-1.5 rounded border border-gray-200 dark:border-gray-600 w-fit">
                 {formatDisplayDate(album.createdAt)}
               </span>
             </div>
@@ -740,9 +740,9 @@ const AlbumView: React.FC<AlbumViewProps> = ({
       >
         <input {...getInputProps()} />
         {isDragActive ? (
-          <p>Drop the files here ...</p>
+          <p className="text-gray-700 dark:text-gray-300">Drop the files here ...</p>
         ) : (
-          <p>Drag & drop images here, or click to upload</p>
+          <p className="text-gray-700 dark:text-gray-300">Drag & drop images here, or click to upload</p>
         )}
       </div>
 
@@ -755,7 +755,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
           return (
             <div
               key={img.id}
-              className="bg-card border rounded-lg p-2 flex flex-col relative group"
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-2 flex flex-col relative group"
               draggable
               onDragStart={() => handleDragStart(idx)}
               onDragOver={(e) => { e.preventDefault(); handleDragOver(idx); }}
@@ -763,7 +763,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
             >
               {/* Media display */}
               <div
-                className="relative rounded mb-2 h-32 w-full overflow-hidden bg-gray-100 cursor-pointer"
+                className="relative rounded mb-2 h-32 w-full overflow-hidden bg-gray-100 dark:bg-gray-700 cursor-pointer"
                 onClick={() => setLightboxIndex(idx)}
               >
                 {isVideo ? (
@@ -791,7 +791,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
 
               <input
                 type="text"
-                className="text-xs p-1 border rounded mb-1"
+                className="text-xs p-1 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded mb-1 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 placeholder="Title..."
                 value={imageMetadata[img.id]?.title || ''}
                 onChange={(e) => handleMetadataChange(img.id, 'title', e.target.value)}
@@ -799,7 +799,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
               />
               <input
                 type="text"
-                className="text-xs p-1 border rounded mb-2"
+                className="text-xs p-1 border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded mb-2 placeholder:text-gray-400 dark:placeholder:text-gray-500"
                 placeholder="Description..."
                 value={imageMetadata[img.id]?.description || ''}
                 onChange={(e) => handleMetadataChange(img.id, 'description', e.target.value)}
@@ -822,12 +822,12 @@ const AlbumView: React.FC<AlbumViewProps> = ({
       {hasMoreImages && (
         <div ref={loadMoreRef} className="mt-6 text-center">
           {isLoadingImages ? (
-            <div className="inline-flex items-center gap-2 text-sm text-gray-600">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
+            <div className="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 dark:border-gray-600 border-t-gray-600 dark:border-t-gray-300"></div>
               <span>Loading more images...</span>
             </div>
           ) : (
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
               {localImages.length} of {album?.imageCount || 0} images loaded
             </div>
           )}
@@ -836,7 +836,7 @@ const AlbumView: React.FC<AlbumViewProps> = ({
 
       {/* All images loaded message */}
       {album && !hasMoreImages && localImages.length > 0 && (
-        <div className="mt-6 text-center text-sm text-gray-500">
+        <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
           All {album.imageCount} images loaded
         </div>
       )}

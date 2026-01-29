@@ -5,18 +5,21 @@ import './index.css';
 import App from './App';
 import { AuthProvider } from './auth/AuthProvider';
 import { StorageProviderContext } from './contexts/StorageContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 // Set basename for GitHub Pages deployment
 const basename = import.meta.env.MODE === 'production' ? '/gallery-manager' : '/';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter basename={basename}>
-      <AuthProvider>
-        <StorageProviderContext>
-          <App />
-        </StorageProviderContext>
-      </AuthProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter basename={basename}>
+        <AuthProvider>
+          <StorageProviderContext>
+            <App />
+          </StorageProviderContext>
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   </StrictMode>
 );
