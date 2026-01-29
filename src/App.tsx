@@ -9,6 +9,7 @@ import AlbumView from './components/AlbumView';
 import { useStorage, useStorageProvider } from './contexts/StorageContext';
 import { DownloadService } from './services/download';
 import { DownloadProgressModal } from './components/DownloadProgressModal';
+import { UploadProgressModal, type UploadProgress } from './components/UploadProgressModal';
 import type { Album, AlbumDetail, Image, UpdateAlbumRequest } from './types/models';
 import type { DownloadProgress } from './types/download';
 
@@ -77,6 +78,7 @@ function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [isCreateAlbumModalOpen, setIsCreateAlbumModalOpen] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const [downloadService] = useState(() => new DownloadService(storage));
   const [filterText, setFilterText] = useState('');
   const [sortBy, setSortBy] = useState<'title' | 'date' | 'imageCount'>('date');
@@ -331,12 +333,30 @@ function Dashboard() {
   // Handle image upload to album
   const handleImageUpload = async (files: File[], albumId: string) => {
     try {
-      setLoading(true);
-      for (const file of files) {
+      setUploadProgress({
+        current: 0,
+        total: files.length,
+        currentFile: files[0]?.name || '',
+        stage: 'uploading',
+      });
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setUploadProgress({
+          current: i,
+          total: files.length,
+          currentFile: file.name,
+          stage: 'uploading',
+        });
         await storage.uploadImage(file, { albumId });
       }
-      // Small delay to let Imgur's servers propagate the changes
-      await new Promise(resolve => setTimeout(resolve, 500));
+
+      setUploadProgress({
+        current: files.length,
+        total: files.length,
+        currentFile: '',
+        stage: 'complete',
+      });
 
       // Refresh album after upload to show new images
       if (selectedAlbum) {
@@ -346,9 +366,13 @@ function Dashboard() {
       }
     } catch (error) {
       console.error('Failed to upload image:', error);
-      setError('Failed to upload image. Please try again.');
-    } finally {
-      setLoading(false);
+      setUploadProgress({
+        current: 0,
+        total: files.length,
+        currentFile: '',
+        stage: 'error',
+        error: 'Failed to upload image. Please try again.',
+      });
     }
   };
 
@@ -922,6 +946,12 @@ function Dashboard() {
       <DownloadProgressModal
         progress={downloadProgress}
         onClose={() => setDownloadProgress(null)}
+      />
+
+      {/* Upload Progress Modal */}
+      <UploadProgressModal
+        progress={uploadProgress}
+        onClose={() => setUploadProgress(null)}
       />
     </div>
   );
